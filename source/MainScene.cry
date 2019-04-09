@@ -9,15 +9,211 @@ const X_RES = 640;
 const Y_RES = 480;
 
 const TILE_SIZE = 32;
+const COL_COUNT = X_RES / TILE_SIZE;
+const ROW_COUNT = Y_RES / TILE_SIZE;
+
+enum Tile { FLOOR, WALL, ICE }
+
+enum Direction { UP, DOWN, LEFT, RIGHT }
+
+class Object {
+	field row;
+	field col;
+
+	constructor(row, col) {
+		this.row = row;
+		this.col = col;
+	}
+
+	function draw() {
+		this.getImage().draw(this.col * TILE_SIZE, this.row * TILE_SIZE);
+	}
+
+	function getImage() {
+		throw new Exception("Abstract method not implemented.");
+	}
+}
+
+class Player : Object {
+	constructor(row, col) : base(row, col) {}
+
+	function getImage() {
+		return Images.get("player.png");
+	}
+}
+
+class Crate : Object {
+	constructor(row, col) : base(row, col) {}
+
+	function getImage() {
+		return Images.get("crate.png");
+	}
+}
 
 class MainScene : AbstractScene {
+	field tiles;
+	field objects;
+	field players;
+
 	constructor() : base() {
+		this.randomizeLevel();
+	}
+
+	function randomizeLevel() {
+		this.tiles = [];
+		this.objects = [];
+		this.players = [];
+		for (row = 0; row < ROW_COUNT; ++row) {
+			this.tiles.add([]);
+			this.objects.add([]);
+			for (col = 0; col < COL_COUNT; ++col) {
+				if (row == 0 || row == ROW_COUNT - 1 || col == 0 || col == COL_COUNT - 1) {
+					this.tiles[row].add(Tile.WALL);
+					this.objects[row].add(null);
+				} else {
+					if (Random.randomInt(5) == 0) {
+						this.tiles[row].add(Tile.ICE);
+					} else {
+						this.tiles[row].add(Tile.FLOOR);
+					}
+
+					if (row == 1 && col == 1) {
+						object = new Player(row, col);
+						this.players.add(object);
+					} else if (Random.randomInt(10) == 0) {
+						object = new Crate(row, col);
+					} else {
+						object = null;
+					}
+					this.objects[row].add(object);
+				}
+			}
+		}
+	}
+
+	function move(row, col, direction, strength = 3) {
+		if (strength == 0) return false;
+
+		object = this.objects[row][col];
+		if (object == null) {
+			return this.tiles[row][col] != Tile.WALL;
+		}
+
+		switch (direction) {
+			case Direction.UP:
+				if (this.move(row - 1, col, direction, strength - 1)) {
+					this.objects[row - 1][col] = object;
+					this.objects[row][col] = null;
+					--object.row;
+					if (this.tiles[row - 1][col] == Tile.ICE) {
+						this.move(row - 1, col, direction, strength);
+					}
+					return true;
+				}
+				break;
+			case Direction.DOWN:
+				if (this.move(row + 1, col, direction, strength - 1)) {
+					this.objects[row + 1][col] = object;
+					this.objects[row][col] = null;
+					++object.row;
+					if (this.tiles[row + 1][col] == Tile.ICE) {
+						this.move(row + 1, col, direction, strength);
+					}
+					return true;
+				}
+				break;
+			case Direction.LEFT:
+				if (this.move(row, col - 1, direction, strength - 1)) {
+					this.objects[row][col - 1] = object;
+					this.objects[row][col] = null;
+					--object.col;
+					if (this.tiles[row][col - 1] == Tile.ICE) {
+						this.move(row, col - 1, direction, strength);
+					}
+					return true;
+				}
+				break;
+			case Direction.RIGHT:
+				if (this.move(row, col + 1, direction, strength - 1)) {
+					this.objects[row][col + 1] = object;
+					this.objects[row][col] = null;
+					++object.col;
+					if (this.tiles[row][col + 1] == Tile.ICE) {
+						this.move(row, col + 1, direction, strength);
+					}
+					return true;
+				}
+				break;
+		}
+		return false;
+	}
+
+	function findPlayer() {
+		for (row = 0; row < ROW_COUNT; ++row) {
+			for (col = 0; col < COL_COUNT; ++col) {
+				if (this.objects[row][col] == this.players[0]) {
+					return [row, col];
+				}
+			}
+		}
 	}
 
 	function update(inputManager, events) {
+		if (inputManager.isKeyPressedThisFrame(KeyboardKey.ESCAPE)) {
+			this.switchScene(new MainScene());
+			return;
+		}
+
+		for (e : events) {
+			if (e.type == EventType.KEY && e.down) {
+				switch (e.key) {
+					case KeyboardKey.UP:
+						direction = Direction.UP;
+						break;
+					case KeyboardKey.DOWN:
+						direction = Direction.DOWN;
+						break;
+					case KeyboardKey.LEFT:
+						direction = Direction.LEFT;
+						break;
+					case KeyboardKey.RIGHT:
+						direction = Direction.RIGHT;
+						break;
+					default:
+						direction = null;
+						break;
+				}
+				if (direction != null) {
+					this.move(this.players[0].row, this.players[0].col, direction);
+				}
+			}
+		}
 	}
 
 	function render() {
 		Graphics2D.Draw.fill(255, 255, 255);
+
+		for (row = 0; row < ROW_COUNT; ++row) {
+			for (col = 0; col < COL_COUNT; ++col) {
+				switch (this.tiles[row][col]) {
+					case Tile.WALL:
+						image = Images.get("wall.png");
+						break;
+					case Tile.FLOOR:
+						image = Images.get("floor.png");
+						break;
+					case Tile.ICE:
+						image = Images.get("ice.png");
+						break;
+				}
+				x = col * TILE_SIZE;
+				y = row * TILE_SIZE;
+				image.draw(x, y);
+
+				if (this.objects[row][col] != null) {
+					this.objects[row][col].draw();
+				}
+			}
+		}
 	}
 }
