@@ -17,16 +17,14 @@ enum Tile { FLOOR, WALL, ICE }
 enum Direction { UP, DOWN, LEFT, RIGHT }
 
 class Object {
-	field row;
-	field col;
+	field position;
 
-	constructor(row, col) {
-		this.row = row;
-		this.col = col;
+	constructor(position) {
+		this.position = position;
 	}
 
 	function draw() {
-		this.getImage().draw(this.col * TILE_SIZE, this.row * TILE_SIZE);
+		this.getImage().draw(this.position[0] * TILE_SIZE, this.position[1] * TILE_SIZE);
 	}
 
 	function getImage() {
@@ -35,7 +33,7 @@ class Object {
 }
 
 class Player : Object {
-	constructor(row, col) : base(row, col) {}
+	constructor(position) : base(position) {}
 
 	function getImage() {
 		return Images.get("player.png");
@@ -43,7 +41,7 @@ class Player : Object {
 }
 
 class Crate : Object {
-	constructor(row, col) : base(row, col) {}
+	constructor(position) : base(position) {}
 
 	function getImage() {
 		return Images.get("crate.png");
@@ -63,99 +61,83 @@ class MainScene : AbstractScene {
 		this.tiles = [];
 		this.objects = [];
 		this.players = [];
-		for (row = 0; row < ROW_COUNT; ++row) {
+		for (x = 0; x < COL_COUNT; ++x) {
 			this.tiles.add([]);
 			this.objects.add([]);
-			for (col = 0; col < COL_COUNT; ++col) {
-				if (row == 0 || row == ROW_COUNT - 1 || col == 0 || col == COL_COUNT - 1) {
-					this.tiles[row].add(Tile.WALL);
-					this.objects[row].add(null);
+			for (y = 0; y < ROW_COUNT; ++y) {
+				if (y == 0 || y == ROW_COUNT - 1 || x == 0 || x == COL_COUNT - 1) {
+					this.tiles[x].add(Tile.WALL);
+					this.objects[x].add(null);
 				} else {
 					if (Random.randomInt(5) == 0) {
-						this.tiles[row].add(Tile.ICE);
+						this.tiles[x].add(Tile.ICE);
 					} else {
-						this.tiles[row].add(Tile.FLOOR);
+						this.tiles[x].add(Tile.FLOOR);
 					}
 
-					if (row == 1 && col == 1) {
-						object = new Player(row, col);
+					if (y == 1 && x == 1) {
+						object = new Player([x, y]);
 						this.players.add(object);
 					} else if (Random.randomInt(10) == 0) {
-						object = new Crate(row, col);
+						object = new Crate([x, y]);
 					} else {
 						object = null;
 					}
-					this.objects[row].add(object);
+					this.objects[x].add(object);
 				}
 			}
 		}
 	}
 
-	function move(row, col, direction, strength = 3) {
-		if (strength == 0) return false;
-
-		object = this.objects[row][col];
-		if (object == null) {
-			return this.tiles[row][col] != Tile.WALL;
-		}
-
+	// Gets the position adjacent to the given position in the given direction.
+	static function neighbor(position, direction) {
 		switch (direction) {
 			case Direction.UP:
-				if (this.move(row - 1, col, direction, strength - 1)) {
-					this.objects[row - 1][col] = object;
-					this.objects[row][col] = null;
-					--object.row;
-					if (this.tiles[row - 1][col] == Tile.ICE) {
-						this.move(row - 1, col, direction, strength);
-					}
-					return true;
-				}
+				return [position[0], position[1] - 1];
 				break;
 			case Direction.DOWN:
-				if (this.move(row + 1, col, direction, strength - 1)) {
-					this.objects[row + 1][col] = object;
-					this.objects[row][col] = null;
-					++object.row;
-					if (this.tiles[row + 1][col] == Tile.ICE) {
-						this.move(row + 1, col, direction, strength);
-					}
-					return true;
-				}
+				return [position[0], position[1] + 1];
 				break;
 			case Direction.LEFT:
-				if (this.move(row, col - 1, direction, strength - 1)) {
-					this.objects[row][col - 1] = object;
-					this.objects[row][col] = null;
-					--object.col;
-					if (this.tiles[row][col - 1] == Tile.ICE) {
-						this.move(row, col - 1, direction, strength);
-					}
-					return true;
-				}
+				return [position[0] - 1, position[1]];
 				break;
 			case Direction.RIGHT:
-				if (this.move(row, col + 1, direction, strength - 1)) {
-					this.objects[row][col + 1] = object;
-					this.objects[row][col] = null;
-					++object.col;
-					if (this.tiles[row][col + 1] == Tile.ICE) {
-						this.move(row, col + 1, direction, strength);
-					}
-					return true;
-				}
+				return [position[0] + 1, position[1]];
 				break;
 		}
-		return false;
 	}
 
-	function findPlayer() {
-		for (row = 0; row < ROW_COUNT; ++row) {
-			for (col = 0; col < COL_COUNT; ++col) {
-				if (this.objects[row][col] == this.players[0]) {
-					return [row, col];
-				}
-			}
+	// Pushes the given object in the given direction, along with anything in the way,
+	// as long as the strength parameter is >= the number of objects to push.
+	function push(object, direction, strength = 2) {
+		// Can't push anything with no strength.
+		if (strength == 0) return false;
+
+		// Get neighboring position.
+		neighborPosition = MainScene.neighbor(object.position, direction);
+
+		// Push neighbor, if any.
+		neighbor = this.objects[neighborPosition[0]][neighborPosition[1]];
+		if (neighbor != null && !this.push(neighbor, direction, strength - 1)) {
+			// Too much stuff in the way.
+			return false;
 		}
+
+		// Try to push object.
+		neighborTile = this.tiles[neighborPosition[0]][neighborPosition[1]];
+		if (neighborTile == Tile.WALL) {
+			return false;
+		} else {
+			// Move one.
+			this.objects[object.position[0]][object.position[1]] = null;
+			this.objects[neighborPosition[0]][neighborPosition[1]] = object;
+			object.position = neighborPosition;
+		}
+		if (this.tiles[object.position[0]][object.position[1]] == Tile.ICE) {
+			// Slide.
+			this.push(object, direction, strength);
+		}
+		return true;
 	}
 
 	function update(inputManager, events) {
@@ -184,7 +166,7 @@ class MainScene : AbstractScene {
 						break;
 				}
 				if (direction != null) {
-					this.move(this.players[0].row, this.players[0].col, direction);
+					this.push(this.players[0], direction);
 				}
 			}
 		}
@@ -193,9 +175,9 @@ class MainScene : AbstractScene {
 	function render() {
 		Graphics2D.Draw.fill(255, 255, 255);
 
-		for (row = 0; row < ROW_COUNT; ++row) {
-			for (col = 0; col < COL_COUNT; ++col) {
-				switch (this.tiles[row][col]) {
+		for (x = 0; x < COL_COUNT; ++x) {
+			for (y = 0; y < ROW_COUNT; ++y) {
+				switch (this.tiles[x][y]) {
 					case Tile.WALL:
 						image = Images.get("wall.png");
 						break;
@@ -206,12 +188,11 @@ class MainScene : AbstractScene {
 						image = Images.get("ice.png");
 						break;
 				}
-				x = col * TILE_SIZE;
-				y = row * TILE_SIZE;
-				image.draw(x, y);
+				image.draw(x * TILE_SIZE, y * TILE_SIZE);
 
-				if (this.objects[row][col] != null) {
-					this.objects[row][col].draw();
+				object = this.objects[x][y];
+				if (object != null) {
+					object.draw();
 				}
 			}
 		}
