@@ -8,11 +8,11 @@ import UserData;
 const X_RES = 640;
 const Y_RES = 480;
 
-const TILE_SIZE = 32;
+const TILE_SIZE = 20;
 const COL_COUNT = X_RES / TILE_SIZE;
 const ROW_COUNT = Y_RES / TILE_SIZE;
 
-enum Tile { FLOOR, WALL, ICE }
+enum Tile { FLOOR, WALL, ICE, STAIRS }
 
 enum Direction { UP, DOWN, LEFT, RIGHT }
 
@@ -24,34 +24,83 @@ class Object {
 	}
 
 	function draw() {
-		this.getImage().draw(this.position[0] * TILE_SIZE, this.position[1] * TILE_SIZE);
-	}
-
-	function getImage() {
 		throw new Exception("Abstract method not implemented.");
 	}
 }
 
-class Player : Object {
+class Character : Object {
+	field returnPoint = null;
+
 	constructor(position) : base(position) {}
 
-	function getImage() {
-		return Images.get("player.png");
+	function draw() {
+		Images.get("character.png").draw(this.position[0] * TILE_SIZE, this.position[1] * TILE_SIZE);
 	}
 }
 
 class Crate : Object {
 	constructor(position) : base(position) {}
 
-	function getImage() {
-		return Images.get("crate.png");
+	function draw() {
+		Images.get("crate.png").draw(this.position[0] * TILE_SIZE, this.position[1] * TILE_SIZE);
+	}
+}
+
+class ReturnPoint : Object {
+	field time;
+	field character;
+
+	field image;
+
+	constructor(position, time, character) : base(position) {
+		this.time = time;
+		this.character = character;
+		this.renderImage();
+	}
+
+	function renderImage() {
+		this.image = MainScene.font.render(this.time);
+	}
+
+	function countDown() {
+		--this.time;
+		this.renderImage();
+	}
+
+	function draw() {
+		xCharacter = this.character.position[0] * TILE_SIZE;
+		yCharacter = this.character.position[1] * TILE_SIZE;
+		// Draw line between return point and character.
+		Graphics2D.Draw.line
+			( (this.position[0] + 0.5) * TILE_SIZE, (this.position[1] + 0.5) * TILE_SIZE
+			, xCharacter + TILE_SIZE / 2.0, yCharacter + TILE_SIZE / 2.0
+			, 1
+			, 255, 0, 0
+			);
+		// Draw counter on character.
+		Graphics2D.Draw.rectangle
+			( xCharacter + TILE_SIZE - this.image.width, yCharacter + TILE_SIZE - this.image.height
+			, this.image.width, this.image.height
+			, 0, 0, 0, 64
+			);
+		this.image.draw(xCharacter + TILE_SIZE - this.image.width, yCharacter + TILE_SIZE - this.image.height);
 	}
 }
 
 class MainScene : AbstractScene {
+	static field font = FontResource.fromResource("Inconsolata-Bold.ttf").getRenderer()
+		.setSize(9)
+		.setStyle(FontStyle.BOLD)
+		.setColor(255, 255, 255);
+
 	field tiles;
 	field objects;
-	field players;
+	field characters;
+	field returnPoints;
+
+	field characterIdx = 0;
+
+	field mousePosition;
 
 	constructor() : base() {
 		this.randomizeLevel();
@@ -60,25 +109,35 @@ class MainScene : AbstractScene {
 	function randomizeLevel() {
 		this.tiles = [];
 		this.objects = [];
-		this.players = [];
+		this.characters = [];
+		this.returnPoints = [];
 		for (x = 0; x < COL_COUNT; ++x) {
 			this.tiles.add([]);
 			this.objects.add([]);
 			for (y = 0; y < ROW_COUNT; ++y) {
 				if (y == 0 || y == ROW_COUNT - 1 || x == 0 || x == COL_COUNT - 1) {
+					// Outer wall.
 					this.tiles[x].add(Tile.WALL);
+					this.objects[x].add(null);
+				} else if (y == ROW_COUNT - 2 && x == COL_COUNT - 2) {
+					// Stairs.
+					this.tiles[x].add(Tile.STAIRS);
 					this.objects[x].add(null);
 				} else {
 					if (Random.randomInt(5) == 0) {
+						// Ice.
 						this.tiles[x].add(Tile.ICE);
 					} else {
+						// Floor.
 						this.tiles[x].add(Tile.FLOOR);
 					}
 
 					if (y == 1 && x == 1) {
-						object = new Player([x, y]);
-						this.players.add(object);
+						// Character.
+						object = new Character([x, y]);
+						this.characters.add(object);
 					} else if (Random.randomInt(10) == 0) {
+						// Crate.
 						object = new Crate([x, y]);
 					} else {
 						object = null;
@@ -140,6 +199,65 @@ class MainScene : AbstractScene {
 		return true;
 	}
 
+	// Summons the current character from the future at the given coordinates.
+	function summonFromFuture(target) {
+		// Can't summon more than one future character from the character instance.
+		if (this.characters[this.characterIdx].returnPoint != null) return;
+
+		x = target[0];
+		y = target[1];
+
+		// Need an empty spot.
+		if (this.objects[x][y] != null) return;
+
+		currentCharacter = this.characters[this.characterIdx];
+		// Create future character.
+		futureCharacter = new Character(target.clone());
+		this.objects[x][y] = futureCharacter;
+		// Add the new character after the current character and switch control to it.
+		this.characters.insert(this.characterIdx + 1, futureCharacter);
+		++this.characterIdx;
+		// Create a return point where the future character came from.
+		returnPoint = new ReturnPoint(target.clone(), 20, currentCharacter);
+		// Set the current character as the character who needs to return to the return point.
+		currentCharacter.returnPoint = returnPoint;
+		// Andvance time.
+		this.advanceTime();
+		// Add the return point to the list after advancing time so it starts at max time.
+		this.returnPoints.add(returnPoint);
+	}
+
+	function advanceTime() {
+		for (i = 0; i < this.returnPoints.length; ++i) {
+			returnPoint = this.returnPoints[i];
+			character = returnPoint.character;
+			position = returnPoint.position;
+			returnPoint.countDown();
+			if (returnPoint.time == 0) {
+				if (character.position[0] == position[0] && character.position[1] == position[1]) {
+					// Remove character.
+					for (j = 0; j < this.characters.length; ++j) {
+						if (this.characters[j] == character) {
+							this.objects[position[0]][position[1]] = null;
+							this.characters.remove(j);
+							if (this.characterIdx > j) {
+								--this.characterIdx;
+							}
+							break;
+						}
+					}
+					// Remove return point.
+					this.returnPoints.remove(i);
+					--i;
+				} else {
+					// Logical inconsistency!
+					this.switchScene(new MainScene());
+					return;
+				}
+			}
+		}
+	}
+
 	function update(inputManager, events) {
 		if (inputManager.isKeyPressedThisFrame(KeyboardKey.ESCAPE)) {
 			this.switchScene(new MainScene());
@@ -147,8 +265,24 @@ class MainScene : AbstractScene {
 		}
 
 		for (e : events) {
-			if (e.type == EventType.KEY && e.down) {
+			if (e.type == EventType.MOUSE_PRESS) {
+				// Summon.
+				this.summonFromFuture([e.x / TILE_SIZE, e.y / TILE_SIZE]);
+			} else if (e.type == EventType.KEY && e.down) {
+				direction = null;
 				switch (e.key) {
+					case KeyboardKey.Q:
+						// Previous character.
+						this.characterIdx = (this.characterIdx - 1) % this.characters.length;
+						break;
+					case KeyboardKey.E:
+						// Next character.
+						this.characterIdx = (this.characterIdx + 1) % this.characters.length;
+						break;
+					case KeyboardKey.SPACE:
+						// Wait.
+						this.advanceTime();
+						break;
 					case KeyboardKey.UP:
 						direction = Direction.UP;
 						break;
@@ -161,15 +295,32 @@ class MainScene : AbstractScene {
 					case KeyboardKey.RIGHT:
 						direction = Direction.RIGHT;
 						break;
+					case KeyboardKey.W:
+						direction = Direction.UP;
+						break;
+					case KeyboardKey.S:
+						direction = Direction.DOWN;
+						break;
+					case KeyboardKey.A:
+						direction = Direction.LEFT;
+						break;
+					case KeyboardKey.D:
+						direction = Direction.RIGHT;
+						break;
 					default:
-						direction = null;
 						break;
 				}
 				if (direction != null) {
-					this.push(this.players[0], direction);
+					// Try to move the current character.
+					if (this.push(this.characters[this.characterIdx], direction)) {
+						// If the character moved, advance time.
+						this.advanceTime();
+					}
 				}
 			}
 		}
+
+		this.mousePosition = inputManager.getMousePosition();
 	}
 
 	function render() {
@@ -177,6 +328,9 @@ class MainScene : AbstractScene {
 
 		for (x = 0; x < COL_COUNT; ++x) {
 			for (y = 0; y < ROW_COUNT; ++y) {
+				// Draw tiles.
+				xScreen = x * TILE_SIZE;
+				yScreen = y * TILE_SIZE;
 				switch (this.tiles[x][y]) {
 					case Tile.WALL:
 						image = Images.get("wall.png");
@@ -187,14 +341,34 @@ class MainScene : AbstractScene {
 					case Tile.ICE:
 						image = Images.get("ice.png");
 						break;
+					case Tile.STAIRS:
+						image = Images.get("stairs.png");
+						break;
 				}
-				image.draw(x * TILE_SIZE, y * TILE_SIZE);
+				image.draw(xScreen, yScreen);
 
+				// Draw objects.
 				object = this.objects[x][y];
 				if (object != null) {
 					object.draw();
+					// Draw selector.
+					if (this.characters.length > 1 && object == this.characters[this.characterIdx]) {
+						Images.get("selector.png").draw(object.position[0] * TILE_SIZE, object.position[1] * TILE_SIZE);
+					}
 				}
 			}
 		}
+
+		// Draw return points.
+		for (returnPoint : this.returnPoints) {
+			returnPoint.draw();
+		}
+
+		// Draw mouse hover highlight.
+		Graphics2D.Draw.rectangle
+			( this.mousePosition[0] / TILE_SIZE * TILE_SIZE, this.mousePosition[1] / TILE_SIZE * TILE_SIZE
+			, TILE_SIZE, TILE_SIZE
+			, 255, 255, 255, 128
+			);
 	}
 }
