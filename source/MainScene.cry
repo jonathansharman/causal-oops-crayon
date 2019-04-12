@@ -2,6 +2,7 @@ import Graphics2D;
 import Graphics2DText;
 import Math;
 import Random;
+import Resources;
 import TwoCansAlpha2;
 import UserData;
 
@@ -17,6 +18,7 @@ enum Tile { FLOOR, WALL, ICE, STAIRS }
 enum Direction { UP, DOWN, LEFT, RIGHT }
 
 class Object {
+	// row-col
 	field position;
 
 	constructor(position) {
@@ -37,19 +39,19 @@ class Character : Object {
 	function draw() {
 		switch (this.direction) {
 			case Direction.UP:
-				image = Images.get("character-up.png");
+				image = Images.get("images/character-up.png");
 				break;
 			case Direction.DOWN:
-				image = Images.get("character-down.png");
+				image = Images.get("images/character-down.png");
 				break;
 			case Direction.LEFT:
-				image = Images.get("character-left.png");
+				image = Images.get("images/character-left.png");
 				break;
 			case Direction.RIGHT:
-				image = Images.get("character-right.png");
+				image = Images.get("images/character-right.png");
 				break;
 		}
-		image.draw(this.position[0] * TILE_SIZE, this.position[1] * TILE_SIZE);
+		image.draw(this.position[1] * TILE_SIZE, this.position[0] * TILE_SIZE);
 	}
 }
 
@@ -57,7 +59,7 @@ class Crate : Object {
 	constructor(position) : base(position) {}
 
 	function draw() {
-		Images.get("crate.png").draw(this.position[0] * TILE_SIZE, this.position[1] * TILE_SIZE);
+		Images.get("images/crate.png").draw(this.position[1] * TILE_SIZE, this.position[0] * TILE_SIZE);
 	}
 }
 
@@ -71,20 +73,20 @@ class ReturnPoint : Object {
 	}
 
 	function draw() {
-		xCharacter = this.character.position[0] * TILE_SIZE;
-		yCharacter = this.character.position[1] * TILE_SIZE;
+		xCharacter = this.character.position[1] * TILE_SIZE;
+		yCharacter = this.character.position[0] * TILE_SIZE;
 		// Draw triangle from character to return point, if not at same position.
 		if (this.character.position[0] != this.position[0] || this.character.position[1] != this.position[1]) {
 			angle = Math.arctan
-				( this.character.position[1] - this.position[1]
-				, this.character.position[0] - this.position[0]
+				( this.character.position[0] - this.position[0]
+				, this.character.position[1] - this.position[1]
 				);
 			Graphics2D.Draw.triangle
 				( xCharacter + TILE_SIZE / 2.0 * (1.0 + Math.cos(angle + Math.PI / 4.0))
 				, yCharacter + TILE_SIZE / 2.0 * (1.0 + Math.sin(angle + Math.PI / 4.0))
 				, xCharacter + TILE_SIZE / 2.0 * (1.0 + Math.cos(angle - Math.PI / 4.0))
 				, yCharacter + TILE_SIZE / 2.0 * (1.0 + Math.sin(angle - Math.PI / 4.0))
-				, TILE_SIZE * (this.position[0] + 0.5), TILE_SIZE * (this.position[1] + 0.5)
+				, TILE_SIZE * (this.position[1] + 0.5), TILE_SIZE * (this.position[0] + 0.5)
 				, 0, 0, 0, 64
 				);
 		}
@@ -94,7 +96,7 @@ class ReturnPoint : Object {
 		while (time > 0) {
 			digit = time % 10;
 			time /= 10;
-			image = Images.get(digit + ".png");
+			image = Images.get("images/" + digit + ".png");
 			x -= image.width;
 			y = yCharacter + TILE_SIZE - image.height;
 			image.draw(x, y);
@@ -113,7 +115,8 @@ class MainScene : AbstractScene {
 	field mousePosition;
 
 	constructor() : base() {
-		this.randomizeLevel();
+		//this.randomizeLevel();
+		this.loadLevel("levels/1.txt");
 	}
 
 	// Creates a semi-random level.
@@ -122,40 +125,95 @@ class MainScene : AbstractScene {
 		this.objects = [];
 		this.characters = [];
 		this.returnPoints = [];
-		for (x = 0; x < COL_COUNT; ++x) {
+		for (row = 0; row < ROW_COUNT; ++row) {
 			this.tiles.add([]);
 			this.objects.add([]);
-			for (y = 0; y < ROW_COUNT; ++y) {
-				if (y == 0 || y == ROW_COUNT - 1 || x == 0 || x == COL_COUNT - 1) {
+			for (col = 0; col < COL_COUNT; ++col) {
+				if (row == 0 || row == ROW_COUNT - 1 || col == 0 || col == COL_COUNT - 1) {
 					// Outer wall.
-					this.tiles[x].add(Tile.WALL);
-					this.objects[x].add(null);
-				} else if (y == ROW_COUNT - 2 && x == COL_COUNT - 2) {
+					this.tiles[row].add(Tile.WALL);
+					this.objects[row].add(null);
+				} else if (row == ROW_COUNT - 2 && col == COL_COUNT - 2) {
 					// Stairs.
-					this.tiles[x].add(Tile.STAIRS);
-					this.objects[x].add(null);
+					this.tiles[row].add(Tile.STAIRS);
+					this.objects[row].add(null);
 				} else {
 					if (Random.randomInt(5) == 0) {
 						// Ice.
-						this.tiles[x].add(Tile.ICE);
+						this.tiles[row].add(Tile.ICE);
 					} else {
 						// Floor.
-						this.tiles[x].add(Tile.FLOOR);
+						this.tiles[row].add(Tile.FLOOR);
 					}
 
-					if (y == 1 && x == 1) {
+					if (row == 1 && col == 1) {
 						// Character.
-						object = new Character([x, y]);
+						object = new Character([row, col]);
 						this.characters.add(object);
 					} else if (Random.randomInt(10) == 0) {
 						// Crate.
-						object = new Crate([x, y]);
+						object = new Crate([row, col]);
 					} else {
 						object = null;
 					}
-					this.objects[x].add(object);
+					this.objects[row].add(object);
 				}
 			}
+		}
+	}
+
+	// Loads a level from a file.
+	function loadLevel(filename) {
+		this.tiles = [[]];
+		this.objects = [[]];
+		this.characters = [];
+		this.returnPoints = [];
+
+		levelText = Resources.readText(filename);
+		row = 0;
+		col = 0;
+		idx = 0;
+		while (idx < levelText.length) {
+			// Get tile.
+			switch (levelText[idx]) {
+				case ".":
+					this.tiles[row].add(Tile.FLOOR);
+					break;
+				case "#":
+					this.tiles[row].add(Tile.WALL);
+					break;
+				case "/":
+					this.tiles[row].add(Tile.ICE);
+					break;
+				case ">":
+					this.tiles[row].add(Tile.STAIRS);
+					break;
+				default:
+					this.tiles.add([]);
+					this.objects.add([]);
+					col = 0;
+					++row;
+					++idx;
+					continue;
+					break;
+			}
+			++idx;
+			// Get object, if present.
+			switch (levelText[idx]) {
+				case " ":
+					object = null;
+					break;
+				case "@":
+					object = new Character([row, col]);
+					this.characters.add(object);
+					break;
+				case "X":
+					object = new Crate([row, col]);
+					break;
+			}
+			this.objects[row].add(object);
+			++idx;
+			++col;
 		}
 	}
 
@@ -163,16 +221,16 @@ class MainScene : AbstractScene {
 	static function neighbor(position, direction) {
 		switch (direction) {
 			case Direction.UP:
-				return [position[0], position[1] - 1];
+				return [(position[0] - 1) % ROW_COUNT, position[1]];
 				break;
 			case Direction.DOWN:
-				return [position[0], position[1] + 1];
+				return [(position[0] + 1) % ROW_COUNT, position[1]];
 				break;
 			case Direction.LEFT:
-				return [position[0] - 1, position[1]];
+				return [position[0], (position[1] - 1) % COL_COUNT];
 				break;
 			case Direction.RIGHT:
-				return [position[0] + 1, position[1]];
+				return [position[0], (position[1] + 1) % COL_COUNT];
 				break;
 		}
 	}
@@ -214,16 +272,16 @@ class MainScene : AbstractScene {
 		// Can't summon more than one future character from the character instance.
 		if (this.characters[this.characterIdx].returnPoint != null) return;
 
-		x = target[0];
-		y = target[1];
+		row = target[0];
+		col = target[1];
 
 		// Need an empty spot.
-		if (this.objects[x][y] != null) return;
+		if (this.objects[row][col] != null) return;
 
 		currentCharacter = this.characters[this.characterIdx];
 		// Create future character.
 		futureCharacter = new Character(target.clone());
-		this.objects[x][y] = futureCharacter;
+		this.objects[row][col] = futureCharacter;
 		// Add the new character after the current character and switch control to it.
 		this.characters.insert(this.characterIdx + 1, futureCharacter);
 		++this.characterIdx;
@@ -282,7 +340,7 @@ class MainScene : AbstractScene {
 		for (e : events) {
 			if (e.type == EventType.MOUSE_PRESS) {
 				// Summon.
-				this.summonFromFuture([e.x / TILE_SIZE, e.y / TILE_SIZE]);
+				this.summonFromFuture([e.y / TILE_SIZE, e.x / TILE_SIZE]);
 			} else if (e.type == EventType.KEY && e.down) {
 				direction = null;
 				switch (e.key) {
@@ -336,34 +394,34 @@ class MainScene : AbstractScene {
 	function render() {
 		Graphics2D.Draw.fill(255, 255, 255);
 
-		for (x = 0; x < COL_COUNT; ++x) {
-			for (y = 0; y < ROW_COUNT; ++y) {
+		for (row = 0; row < ROW_COUNT; ++row) {
+			for (col = 0; col < COL_COUNT; ++col) {
 				// Draw tiles.
-				xScreen = x * TILE_SIZE;
-				yScreen = y * TILE_SIZE;
-				switch (this.tiles[x][y]) {
+				x = col * TILE_SIZE;
+				y = row * TILE_SIZE;
+				switch (this.tiles[row][col]) {
 					case Tile.WALL:
-						image = Images.get("wall.png");
+						image = Images.get("images/wall.png");
 						break;
 					case Tile.FLOOR:
-						image = Images.get("floor.png");
+						image = Images.get("images/floor.png");
 						break;
 					case Tile.ICE:
-						image = Images.get("ice.png");
+						image = Images.get("images/ice.png");
 						break;
 					case Tile.STAIRS:
-						image = Images.get("stairs.png");
+						image = Images.get("images/stairs.png");
 						break;
 				}
-				image.draw(xScreen, yScreen);
+				image.draw(x, y);
 
 				// Draw objects.
-				object = this.objects[x][y];
+				object = this.objects[row][col];
 				if (object != null) {
 					object.draw();
 					// Draw selector.
 					if (this.characters.length > 1 && object == this.characters[this.characterIdx]) {
-						Images.get("selector.png").draw(object.position[0] * TILE_SIZE, object.position[1] * TILE_SIZE);
+						Images.get("images/selector.png").draw(x, y);
 					}
 				}
 			}
