@@ -1,0 +1,405 @@
+import Graphics2D;
+import Math;
+import Random;
+import Resources;
+import TwoCansAlpha2;
+
+// Represents a game level and its current state.
+class Level {
+	field rowCount;
+	field colCount;
+
+	field xMargin;
+	field yMargin;
+
+	field tiles;
+
+	field objects;
+
+	field characters;
+	field characterIdx = 0;
+
+	field returnPoints;
+
+	// Whether the level's state is logically consistent.
+	field consistent = true;
+
+	field mousePosition;
+
+	// Creates a semi-random level.
+	static function createRandom() {
+		level = new Level();
+		level.rowCount = MAX_ROW_COUNT;
+		level.colCount = MAX_COL_COUNT;
+		level.tiles = [];
+		level.objects = [];
+		level.characters = [];
+		level.returnPoints = [];
+		for (row = 0; row < level.rowCount; ++row) {
+			level.tiles.add([]);
+			level.objects.add([]);
+			for (col = 0; col < level.colCount; ++col) {
+				if (row == 0 || row == level.rowCount - 1 || col == 0 || col == level.colCount - 1) {
+					// Outer wall.
+					level.tiles[row].add(Tile.WALL);
+					level.objects[row].add(null);
+				} else if (row == level.rowCount - 2 && col == level.colCount - 2) {
+					// Stairs.
+					level.tiles[row].add(Tile.STAIRS);
+					level.objects[row].add(null);
+				} else {
+					if (Random.randomInt(5) == 0) {
+						// Ice.
+						level.tiles[row].add(Tile.ICE);
+					} else {
+						// Floor.
+						level.tiles[row].add(Tile.FLOOR);
+					}
+
+					if (row == 1 && col == 1) {
+						// Character.
+						object = new Character(level, [row, col]);
+						level.characters.add(object);
+					} else if (Random.randomInt(10) == 0) {
+						// Crate.
+						object = new Crate(level, [row, col]);
+					} else {
+						object = null;
+					}
+					level.objects[row].add(object);
+				}
+			}
+		}
+		level.xMargin = (X_RES - level.rowCount * TILE_SIZE) / 2;
+		level.yMargin = (Y_RES - level.colCount * TILE_SIZE) / 2;
+		return level;
+	}
+
+	// Loads a level from a file.
+	static function loadFromFile(filename) {
+		level = new Level();
+		level.rowCount = 0;
+		level.colCount = 0;
+		level.tiles = [[]];
+		level.objects = [[]];
+		level.characters = [];
+		level.returnPoints = [];
+
+		levelText = Resources.readText(filename);
+		row = 0;
+		col = 0;
+		idx = 0;
+		while (idx < levelText.length) {
+			// Get tile.
+			switch (levelText[idx]) {
+				case ".":
+					level.tiles[row].add(Tile.FLOOR);
+					break;
+				case "#":
+					level.tiles[row].add(Tile.WALL);
+					break;
+				case "/":
+					level.tiles[row].add(Tile.ICE);
+					break;
+				case ">":
+					level.tiles[row].add(Tile.STAIRS);
+					break;
+				case "O":
+					level.tiles[row].add(Tile.HOLE);
+					break;
+				default:
+					level.tiles.add([]);
+					level.objects.add([]);
+					level.rowCount = Math.max(level.rowCount, level.tiles.length);
+					col = 0;
+					++row;
+					++idx;
+					continue;
+					break;
+			}
+			level.colCount = Math.max(level.colCount, level.tiles[row].length);
+			++idx;
+			// Get object, if present.
+			switch (levelText[idx]) {
+				case " ":
+					object = null;
+					break;
+				case "@":
+					object = new Character(level, [row, col]);
+					level.characters.add(object);
+					break;
+				case "X":
+					object = new Crate(level, [row, col]);
+					break;
+				case "*":
+					object = new IceBlock(level, [row, col]);
+					break;
+			}
+			level.objects[row].add(object);
+			++idx;
+			++col;
+		}
+		level.xMargin = (X_RES - level.colCount * TILE_SIZE) / 2;
+		level.yMargin = (Y_RES - level.rowCount * TILE_SIZE) / 2;
+		return level;
+	}
+
+	@private
+	constructor() {}
+
+	// Gets the position adjacent to "position", towards "direction".
+	function neighbor(position, direction) {
+		switch (direction) {
+			case Direction.UP:
+				return [(position[0] - 1) % this.rowCount, position[1]];
+				break;
+			case Direction.DOWN:
+				return [(position[0] + 1) % this.rowCount, position[1]];
+				break;
+			case Direction.LEFT:
+				return [position[0], (position[1] - 1) % this.colCount];
+				break;
+			case Direction.RIGHT:
+				return [position[0], (position[1] + 1) % this.colCount];
+				break;
+		}
+	}
+
+	// Converts (row, col) to (x, y).
+	function rowColToXY(row, col) {
+		return [this.xMargin + col * TILE_SIZE, this.yMargin + row * TILE_SIZE];
+	}
+
+	// Converts (x, y) to (row, col).
+	function xyToRowCol(x, y) {
+		return [(y - this.yMargin) / TILE_SIZE, (x - this.xMargin) / TILE_SIZE];
+	}
+
+	// Pushes "object" towards "direction", along with anything in the way, if "strength" >= # of objects to push.
+	function push(object, direction, strength = 2) {
+		// Can't push anything with no strength.
+		if (strength == 0) return false;
+
+		// Get neighboring position.
+		neighborPosition = this.neighbor(object.position, direction);
+
+		// Push neighbor, if any.
+		neighbor = this.objects[neighborPosition[0]][neighborPosition[1]];
+		if (neighbor != null && !this.push(neighbor, direction, strength - 1)) {
+			// Too much stuff in the way.
+			return false;
+		}
+
+		// Try to push object.
+		neighborTile = this.tiles[neighborPosition[0]][neighborPosition[1]];
+		if (neighborTile == Tile.WALL) {
+			return false;
+		} else {
+			// Move one.
+			this.objects[object.position[0]][object.position[1]] = null;
+			this.objects[neighborPosition[0]][neighborPosition[1]] = object;
+			object.position = neighborPosition;
+		}
+		if (this.tiles[object.position[0]][object.position[1]] == Tile.ICE) {
+			// Slide.
+			this.push(object, direction, strength);
+		}
+		return true;
+	}
+
+	// Whether the current character can summon from the future at the given row-column position.
+	function canSummonAt(position) {
+		// Can't summon more than one future character from the current character instance.
+		if (this.characters[this.characterIdx].returnPoint != null) {
+			return false;
+		}
+
+		// Can't summon out of bounds.
+		if (position[0] < 0 || position[0] >= this.rowCount || position[1] < 0 || position[1] >= this.colCount) {
+			return false;
+		}
+
+		// Can't summon into certain tiles.
+		switch (this.tiles[position[0]][position[1]]) {
+			case Tile.WALL:
+				return false;
+				break;
+			case Tile.STAIRS:
+				return false;
+				break;
+			case Tile.HOLE:
+				return false;
+				break;
+			default:
+				break;
+		}
+
+		// Can't summon onto other objects.
+		if (this.objects[position[0]][position[1]] != null) {
+			return false;
+		}
+
+		return true;
+	}
+
+	// Summons the current character from the future at the given target position.
+	function summonFromFuture(position) {
+		if (!this.canSummonAt(position)) {
+			return;
+		}
+
+		currentCharacter = this.characters[this.characterIdx];
+		// Create future character.
+		futureCharacter = new Character(this, position.clone());
+		this.objects[position[0]][position[1]] = futureCharacter;
+		// Add the new character after the current character and switch control to it.
+		this.characters.insert(this.characterIdx + 1, futureCharacter);
+		++this.characterIdx;
+		// Create a return point where the future character came from.
+		returnPoint = new ReturnPoint(this, position.clone(), 20, currentCharacter);
+		// Set the current character as the character who needs to return to the return point.
+		currentCharacter.returnPoint = returnPoint;
+		// Andvance time.
+		this.advanceTime();
+		// Add the return point to the list after advancing time so it starts at max time.
+		this.returnPoints.add(returnPoint);
+	}
+
+	// Advances time by one turn.
+	function advanceTime() {
+		for (i = 0; i < this.returnPoints.length; ++i) {
+			returnPoint = this.returnPoints[i];
+			character = returnPoint.character;
+			position = returnPoint.position;
+			--returnPoint.time;
+			if (returnPoint.time == 0) {
+				if (character.position[0] == position[0] && character.position[1] == position[1]) {
+					// Remove character.
+					for (j = 0; j < this.characters.length; ++j) {
+						if (this.characters[j] == character) {
+							this.objects[position[0]][position[1]] = null;
+							this.characters.remove(j);
+							if (this.characterIdx > j) {
+								--this.characterIdx;
+							}
+							break;
+						}
+					}
+					// Remove return point.
+					this.returnPoints.remove(i);
+					--i;
+				} else {
+					// Logical inconsistency!
+					this.consistent = false;
+					return;
+				}
+			}
+		}
+		// Characters who wait look down.
+		for (character : this.characters) {
+			character.direction = Direction.DOWN;
+		}
+	}
+
+	// Updates the level.
+	function update(inputManager, events) {
+		for (e : events) {
+			if (e.type == EventType.MOUSE_PRESS) {
+				// Summon.
+				this.summonFromFuture(this.xyToRowCol(e.x, e.y));
+			} else if (e.type == EventType.KEY && e.down) {
+				direction = null;
+				switch (e.key) {
+					case KeyboardKey.Q:
+						// Previous character.
+						this.characterIdx = (this.characterIdx - 1) % this.characters.length;
+						break;
+					case KeyboardKey.E:
+						// Next character.
+						this.characterIdx = (this.characterIdx + 1) % this.characters.length;
+						break;
+					case KeyboardKey.SPACE:
+						// Wait.
+						this.advanceTime();
+						break;
+					// Movement commands.
+					case KeyboardKey.UP:    direction = Direction.UP;    break;
+					case KeyboardKey.DOWN:  direction = Direction.DOWN;  break;
+					case KeyboardKey.LEFT:  direction = Direction.LEFT;  break;
+					case KeyboardKey.RIGHT: direction = Direction.RIGHT; break;
+					case KeyboardKey.W:     direction = Direction.UP;    break;
+					case KeyboardKey.S:     direction = Direction.DOWN;  break;
+					case KeyboardKey.A:     direction = Direction.LEFT;  break;
+					case KeyboardKey.D:     direction = Direction.RIGHT; break;
+					default:
+						break;
+				}
+				if (direction != null) {
+					// Try to move the current character.
+					if (this.push(this.characters[this.characterIdx], direction)) {
+						// If the character moved, advance time.
+						this.advanceTime();
+						// Update character's direction.
+						this.characters[this.characterIdx].direction = direction;
+					}
+				}
+			}
+		}
+
+		// Save mouse position.
+		this.mousePosition = inputManager.getMousePosition();
+	}
+
+	// Draws the level to the screen.
+	function draw() {
+		for (row = 0; row < this.rowCount; ++row) {
+			for (col = 0; col < this.colCount; ++col) {
+				// Draw tiles.
+				xy = this.rowColToXY(row, col);
+				switch (this.tiles[row][col]) {
+					case Tile.WALL:
+						image = Images.get("images/wall.png");
+						break;
+					case Tile.FLOOR:
+						image = Images.get("images/floor.png");
+						break;
+					case Tile.ICE:
+						image = Images.get("images/ice.png");
+						break;
+					case Tile.STAIRS:
+						image = Images.get("images/stairs.png");
+						break;
+					case Tile.HOLE:
+						image = Images.get("images/hole.png");
+						break;
+				}
+				image.draw(xy[0], xy[1]);
+
+				// Draw objects.
+				object = this.objects[row][col];
+				if (object != null) {
+					object.draw();
+					// Draw selector.
+					if (this.characters.length > 1 && object == this.characters[this.characterIdx]) {
+						Images.get("images/selector.png").draw(xy[0], xy[1]);
+					}
+				}
+			}
+		}
+
+		// Draw return points.
+		for (returnPoint : this.returnPoints) {
+			returnPoint.draw();
+		}
+
+		// Draw mouse hover highlight.
+		hoverRowCol = this.xyToRowCol(this.mousePosition[0], this.mousePosition[1]);
+		hoverXY = this.rowColToXY(hoverRowCol[0], hoverRowCol[1]);
+		hoverRGB = this.canSummonAt(hoverRowCol) ? [255, 255, 255] : [255, 0, 0];
+		Graphics2D.Draw.rectangle
+			( hoverXY[0] + 1, hoverXY[1] + 1
+			, TILE_SIZE - 1, TILE_SIZE - 1
+			, hoverRGB[0], hoverRGB[1], hoverRGB[2], 128
+			);
+	}
+}

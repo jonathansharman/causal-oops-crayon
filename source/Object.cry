@@ -1,0 +1,109 @@
+import Graphics2D;
+import Math;
+import TwoCansAlpha2;
+
+// An object in a level.
+class Object {
+	// The level this object is in.
+	field level;
+	// Row-column position.
+	field position;
+
+	constructor(level, position) {
+		this.level = level;
+		this.position = position;
+	}
+
+	function draw() {
+		throw new Exception("Abstract method not implemented.");
+	}
+}
+
+// A player-controllable character.
+class Character : Object {
+	field direction = Direction.DOWN;
+	field returnPoint = null;
+
+	constructor(level, position) : base(level, position) {}
+
+	function draw() {
+		switch (this.direction) {
+			case Direction.UP:
+				image = Images.get("images/character-up.png");
+				break;
+			case Direction.DOWN:
+				image = Images.get("images/character-down.png");
+				break;
+			case Direction.LEFT:
+				image = Images.get("images/character-left.png");
+				break;
+			case Direction.RIGHT:
+				image = Images.get("images/character-right.png");
+				break;
+		}
+		xy = this.level.rowColToXY(this.position[0], this.position[1]);
+		image.draw(xy[0], xy[1]);
+	}
+}
+
+// A pushable crate.
+class Crate : Object {
+	constructor(level, position) : base(level, position) {}
+
+	function draw() {
+		xy = this.level.rowColToXY(this.position[0], this.position[1]);
+		Images.get("images/crate.png").draw(xy[0], xy[1]);
+	}
+}
+
+// A pushable, slidable block of ice.
+class IceBlock : Object {
+	constructor(level, position) : base(level, position) {}
+
+	function draw() {
+		xy = this.level.rowColToXY(this.position[0], this.position[1]);
+		Images.get("images/ice-block.png").draw(xy[0], xy[1]);
+	}
+}
+
+// A point from which a character emerged from the future.
+class ReturnPoint : Object {
+	field time;
+	field character;
+
+	constructor(level, position, time, character) : base(level, position) {
+		this.time = time;
+		this.character = character;
+	}
+
+	function draw() {
+		xy = this.level.rowColToXY(this.position[0], this.position[1]);
+		xyCharacter = this.level.rowColToXY(this.character.position[0], this.character.position[1]);
+		// Draw triangle from character to return point, if not at same position.
+		if (this.character.position[0] != this.position[0] || this.character.position[1] != this.position[1]) {
+			angle = Math.arctan
+				( this.character.position[0] - this.position[0]
+				, this.character.position[1] - this.position[1]
+				);
+			Graphics2D.Draw.triangle
+				( xyCharacter[0] + TILE_SIZE / 2.0 * (1.0 + Math.cos(angle + Math.PI / 4.0))
+				, xyCharacter[1] + TILE_SIZE / 2.0 * (1.0 + Math.sin(angle + Math.PI / 4.0))
+				, xyCharacter[0] + TILE_SIZE / 2.0 * (1.0 + Math.cos(angle - Math.PI / 4.0))
+				, xyCharacter[1] + TILE_SIZE / 2.0 * (1.0 + Math.sin(angle - Math.PI / 4.0))
+				, xy[0] + TILE_SIZE / 2.0, xy[1] + TILE_SIZE / 2.0
+				, 0, 0, 0, 64
+				);
+		}
+		// Draw time.
+		time = this.time;
+		x = xyCharacter[0] + TILE_SIZE;
+		while (time > 0) {
+			digit = time % 10;
+			time /= 10;
+			image = Images.get("images/" + digit + ".png");
+			x -= image.width;
+			y = xyCharacter[1] + TILE_SIZE - image.height;
+			image.draw(x, y);
+		}
+	}
+}
