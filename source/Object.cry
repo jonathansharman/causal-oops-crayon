@@ -14,8 +14,37 @@ class Object {
 		this.position = position;
 	}
 
-	function draw() {
-		throw new Exception("Abstract method not implemented.");
+	// Pushes this object towards "direction", along with anything in the way, if "strength" >= # of objects to push.
+	function push(direction, strength = 2) {
+		// Can't push anything with zero strength.
+		if (strength == 0) return false;
+
+		// Get neighboring position.
+		neighborPosition = this.level.neighbor(this.position, direction);
+
+		// Push neighbor, if any.
+		neighbor = this.level.objects[neighborPosition[0]][neighborPosition[1]];
+		if (neighbor != null && !neighbor.push(direction, strength - 1)) {
+			// Too much stuff in the way.
+			return false;
+		}
+
+		// Try to push this.
+		neighborTile = this.level.tiles[neighborPosition[0]][neighborPosition[1]];
+		if (neighborTile.isObstacle()) {
+			// Blocked.
+			return false;
+		} else {
+			// Move one.
+			this.level.objects[this.position[0]][this.position[1]] = null;
+			this.level.objects[neighborPosition[0]][neighborPosition[1]] = this;
+			this.position = neighborPosition;
+		}
+		if (this.level.tiles[this.position[0]][this.position[1]].isSlippery()) {
+			// Slide.
+			this.push(direction, strength);
+		}
+		return true;
 	}
 }
 
@@ -44,6 +73,34 @@ class Character : Object {
 		xy = this.level.rowColToXY(this.position[0], this.position[1]);
 		image.draw(xy[0], xy[1]);
 	}
+
+	function enterFloor(floor, direction) {
+		this.level.objects[this.position[0]][this.position[1]] = null;
+		this.level.objects[floor.position[0]][floor.position[1]] = this;
+		this.position = floor.position;
+	}
+
+	function enterWall(floor, direction) {
+		// Do nothing.
+	}
+
+	function enterIce(floor, direction) {
+		this.level.objects[this.position[0]][this.position[1]] = null;
+		this.level.objects[floor.position[0]][floor.position[1]] = this;
+		this.position = floor.position;
+	}
+
+	function enterHole(floor, direction) {
+		this.level.objects[this.position[0]][this.position[1]] = null;
+		this.level.objects[floor.position[0]][floor.position[1]] = this;
+		this.position = floor.position;
+	}
+
+	function enterStairs(floor, direction) {
+		this.level.objects[this.position[0]][this.position[1]] = null;
+		this.level.objects[floor.position[0]][floor.position[1]] = this;
+		this.position = floor.position;
+	}
 }
 
 // A pushable crate.
@@ -54,6 +111,34 @@ class Crate : Object {
 		xy = this.level.rowColToXY(this.position[0], this.position[1]);
 		Images.get("images/crate.png").draw(xy[0], xy[1]);
 	}
+
+	function enterFloor(floor, direction) {
+		this.level.objects[this.position[0]][this.position[1]] = null;
+		this.level.objects[floor.position[0]][floor.position[1]] = this;
+		this.position = floor.position;
+	}
+
+	function enterWall(floor, direction) {
+		// Do nothing.
+	}
+
+	function enterIce(floor, direction) {
+		this.level.objects[this.position[0]][this.position[1]] = null;
+		this.level.objects[floor.position[0]][floor.position[1]] = this;
+		this.position = floor.position;
+	}
+
+	function enterHole(floor, direction) {
+		this.level.objects[this.position[0]][this.position[1]] = null;
+		this.level.objects[floor.position[0]][floor.position[1]] = this;
+		this.position = floor.position;
+	}
+
+	function enterStairs(floor, direction) {
+		this.level.objects[this.position[0]][this.position[1]] = null;
+		this.level.objects[floor.position[0]][floor.position[1]] = this;
+		this.position = floor.position;
+	}
 }
 
 // A pushable, slidable block of ice.
@@ -63,6 +148,34 @@ class IceBlock : Object {
 	function draw() {
 		xy = this.level.rowColToXY(this.position[0], this.position[1]);
 		Images.get("images/ice-block.png").draw(xy[0], xy[1]);
+	}
+
+	function enterFloor(floor, direction) {
+		this.level.objects[this.position[0]][this.position[1]] = null;
+		this.level.objects[floor.position[0]][floor.position[1]] = this;
+		this.position = floor.position;
+	}
+
+	function enterWall(floor, direction) {
+		// Do nothing.
+	}
+
+	function enterIce(floor, direction) {
+		this.level.objects[this.position[0]][this.position[1]] = null;
+		this.level.objects[floor.position[0]][floor.position[1]] = this;
+		this.position = floor.position;
+	}
+
+	function enterHole(floor, direction) {
+		this.level.objects[this.position[0]][this.position[1]] = null;
+		this.level.objects[floor.position[0]][floor.position[1]] = this;
+		this.position = floor.position;
+	}
+
+	function enterStairs(floor, direction) {
+		this.level.objects[this.position[0]][this.position[1]] = null;
+		this.level.objects[floor.position[0]][floor.position[1]] = this;
+		this.position = floor.position;
 	}
 }
 

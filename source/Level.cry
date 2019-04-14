@@ -41,19 +41,19 @@ class Level {
 			for (col = 0; col < level.colCount; ++col) {
 				if (row == 0 || row == level.rowCount - 1 || col == 0 || col == level.colCount - 1) {
 					// Outer wall.
-					level.tiles[row].add(Tile.WALL);
+					level.tiles[row].add(new Wall(level, [row, col]));
 					level.objects[row].add(null);
 				} else if (row == level.rowCount - 2 && col == level.colCount - 2) {
 					// Stairs.
-					level.tiles[row].add(Tile.STAIRS);
+					level.tiles[row].add(new Stairs(level, [row, col]));
 					level.objects[row].add(null);
 				} else {
 					if (Random.randomInt(5) == 0) {
 						// Ice.
-						level.tiles[row].add(Tile.ICE);
+						level.tiles[row].add(new Ice(level, [row, col]));
 					} else {
 						// Floor.
-						level.tiles[row].add(Tile.FLOOR);
+						level.tiles[row].add(new Floor(level, [row, col]));
 					}
 
 					if (row == 1 && col == 1) {
@@ -93,19 +93,19 @@ class Level {
 			// Get tile.
 			switch (levelText[idx]) {
 				case ".":
-					level.tiles[row].add(Tile.FLOOR);
+					level.tiles[row].add(new Floor(level, [row, col]));
 					break;
 				case "#":
-					level.tiles[row].add(Tile.WALL);
+					level.tiles[row].add(new Wall(level, [row, col]));
 					break;
 				case "/":
-					level.tiles[row].add(Tile.ICE);
+					level.tiles[row].add(new Ice(level, [row, col]));
 					break;
 				case ">":
-					level.tiles[row].add(Tile.STAIRS);
+					level.tiles[row].add(new Stairs(level, [row, col]));
 					break;
 				case "O":
-					level.tiles[row].add(Tile.HOLE);
+					level.tiles[row].add(new Hole(level, [row, col]));
 					break;
 				default:
 					level.tiles.add([]);
@@ -175,38 +175,6 @@ class Level {
 		return [(y - this.yMargin) / TILE_SIZE, (x - this.xMargin) / TILE_SIZE];
 	}
 
-	// Pushes "object" towards "direction", along with anything in the way, if "strength" >= # of objects to push.
-	function push(object, direction, strength = 2) {
-		// Can't push anything with no strength.
-		if (strength == 0) return false;
-
-		// Get neighboring position.
-		neighborPosition = this.neighbor(object.position, direction);
-
-		// Push neighbor, if any.
-		neighbor = this.objects[neighborPosition[0]][neighborPosition[1]];
-		if (neighbor != null && !this.push(neighbor, direction, strength - 1)) {
-			// Too much stuff in the way.
-			return false;
-		}
-
-		// Try to push object.
-		neighborTile = this.tiles[neighborPosition[0]][neighborPosition[1]];
-		if (neighborTile == Tile.WALL) {
-			return false;
-		} else {
-			// Move one.
-			this.objects[object.position[0]][object.position[1]] = null;
-			this.objects[neighborPosition[0]][neighborPosition[1]] = object;
-			object.position = neighborPosition;
-		}
-		if (this.tiles[object.position[0]][object.position[1]] == Tile.ICE) {
-			// Slide.
-			this.push(object, direction, strength);
-		}
-		return true;
-	}
-
 	// Whether the current character can summon from the future at the given row-column position.
 	function canSummonAt(position) {
 		// Can't summon more than one future character from the current character instance.
@@ -220,19 +188,19 @@ class Level {
 		}
 
 		// Can't summon into certain tiles.
-		switch (this.tiles[position[0]][position[1]]) {
-			case Tile.WALL:
-				return false;
-				break;
-			case Tile.STAIRS:
-				return false;
-				break;
-			case Tile.HOLE:
-				return false;
-				break;
-			default:
-				break;
-		}
+		//switch (this.tiles[position[0]][position[1]]) {
+		//	case Tile.WALL:
+		//		return false;
+		//		break;
+		//	case Tile.STAIRS:
+		//		return false;
+		//		break;
+		//	case Tile.HOLE:
+		//		return false;
+		//		break;
+		//	default:
+		//		break;
+		//}
 
 		// Can't summon onto other objects.
 		if (this.objects[position[0]][position[1]] != null) {
@@ -335,8 +303,8 @@ class Level {
 						break;
 				}
 				if (direction != null) {
-					// Try to move the current character.
-					if (this.push(this.characters[this.characterIdx], direction)) {
+					// Try to push the current character.
+					if (this.characters[this.characterIdx].push(direction)) {
 						// If the character moved, advance time.
 						this.advanceTime();
 						// Update character's direction.
@@ -355,25 +323,7 @@ class Level {
 		for (row = 0; row < this.rowCount; ++row) {
 			for (col = 0; col < this.colCount; ++col) {
 				// Draw tiles.
-				xy = this.rowColToXY(row, col);
-				switch (this.tiles[row][col]) {
-					case Tile.WALL:
-						image = Images.get("images/wall.png");
-						break;
-					case Tile.FLOOR:
-						image = Images.get("images/floor.png");
-						break;
-					case Tile.ICE:
-						image = Images.get("images/ice.png");
-						break;
-					case Tile.STAIRS:
-						image = Images.get("images/stairs.png");
-						break;
-					case Tile.HOLE:
-						image = Images.get("images/hole.png");
-						break;
-				}
-				image.draw(xy[0], xy[1]);
+				this.tiles[row][col].draw();
 
 				// Draw objects.
 				object = this.objects[row][col];
@@ -381,6 +331,7 @@ class Level {
 					object.draw();
 					// Draw selector.
 					if (this.characters.length > 1 && object == this.characters[this.characterIdx]) {
+						xy = this.rowColToXY(row, col);
 						Images.get("images/selector.png").draw(xy[0], xy[1]);
 					}
 				}
@@ -395,7 +346,7 @@ class Level {
 		// Draw mouse hover highlight.
 		hoverRowCol = this.xyToRowCol(this.mousePosition[0], this.mousePosition[1]);
 		hoverXY = this.rowColToXY(hoverRowCol[0], hoverRowCol[1]);
-		hoverRGB = this.canSummonAt(hoverRowCol) ? [255, 255, 255] : [255, 0, 0];
+		hoverRGB = this.canSummonAt(hoverRowCol) ? [255, 255, 255] : [255, 96, 96];
 		Graphics2D.Draw.rectangle
 			( hoverXY[0] + 1, hoverXY[1] + 1
 			, TILE_SIZE - 1, TILE_SIZE - 1

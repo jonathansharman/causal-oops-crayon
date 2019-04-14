@@ -9,8 +9,6 @@ const TILE_SIZE = 20;
 const MAX_COL_COUNT = X_RES / TILE_SIZE;
 const MAX_ROW_COUNT = Y_RES / TILE_SIZE;
 
-enum Tile { FLOOR, WALL, ICE, STAIRS, HOLE }
-
 enum Direction { UP, DOWN, LEFT, RIGHT }
 
 class MainScene : AbstractScene {
