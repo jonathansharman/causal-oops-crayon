@@ -85,3 +85,21 @@ class Stairs : Tile {
 		return object.enterStairs(this, direction);
 	}
 }
+
+class SunkenCrate : Floor {
+	constructor(level, position) : base(level, position) {}
+
+	function draw() {
+		xy = this.level.rowColToXY(this.position[0], this.position[1]);
+		Images.get("images/sunken-crate.png").draw(xy[0], xy[1]);
+	}
+}
+
+class TrappedCharacter : Floor {
+	constructor(level, position) : base(level, position) {}
+
+	function draw() {
+		xy = this.level.rowColToXY(this.position[0], this.position[1]);
+		Images.get("images/trapped-character.png").draw(xy[0], xy[1]);
+	}
+}

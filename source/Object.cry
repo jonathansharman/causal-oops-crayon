@@ -67,13 +67,6 @@ class Object {
 		return true;
 	}
 
-	function enterHole(floor, direction) {
-		this.level.objects[this.position[0]][this.position[1]] = null;
-		this.level.objects[floor.position[0]][floor.position[1]] = this;
-		this.position = floor.position;
-		return true;
-	}
-
 	function enterStairs(floor, direction) {
 		this.level.objects[this.position[0]][this.position[1]] = null;
 		this.level.objects[floor.position[0]][floor.position[1]] = this;
@@ -107,6 +100,22 @@ class Character : Object {
 		xy = this.level.rowColToXY(this.position[0], this.position[1]);
 		image.draw(xy[0], xy[1]);
 	}
+
+	function enterHole(floor, direction) {
+		this.level.objects[this.position[0]][this.position[1]] = null;
+		this.position = floor.position;
+		for (i = 0; i < this.level.characters.length; ++i) {
+			if (this.level.characters[i] == this) {
+				this.level.characters.remove(i);
+				break;
+			}
+		}
+		if (this.level.characters.length > 0) {
+			this.level.characterIdx = (this.level.characterIdx % this.level.characters.length);
+		}
+		this.level.tiles[floor.position[0]][floor.position[1]] = new TrappedCharacter(this.level, floor.position);
+		return true;
+	}
 }
 
 // A pushable crate.
@@ -116,6 +125,12 @@ class Crate : Object {
 	function draw() {
 		xy = this.level.rowColToXY(this.position[0], this.position[1]);
 		Images.get("images/crate.png").draw(xy[0], xy[1]);
+	}
+
+	function enterHole(floor, direction) {
+		this.level.objects[this.position[0]][this.position[1]] = null;
+		this.level.tiles[floor.position[0]][floor.position[1]] = new SunkenCrate(this.level, floor.position);
+		return true;
 	}
 }
 
@@ -141,6 +156,12 @@ class IceBlock : Object {
 		this.level.objects[floor.position[0]][floor.position[1]] = this;
 		this.position = floor.position;
 		this.push(direction, 1);
+		return true;
+	}
+
+	function enterHole(floor, direction) {
+		this.level.objects[this.position[0]][this.position[1]] = null;
+		this.level.tiles[floor.position[0]][floor.position[1]] = new Ice(this.level, floor.position);
 		return true;
 	}
 }

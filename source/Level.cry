@@ -18,6 +18,7 @@ class Level {
 
 	field characters;
 	field characterIdx = 0;
+	field characterCount = 0;
 
 	field returnPoints;
 
@@ -60,6 +61,7 @@ class Level {
 						// Character.
 						object = new Character(level, [row, col]);
 						level.characters.add(object);
+						++level.characterCount;
 					} else if (Random.randomInt(10) == 0) {
 						// Crate.
 						object = new Crate(level, [row, col]);
@@ -127,6 +129,7 @@ class Level {
 				case "@":
 					object = new Character(level, [row, col]);
 					level.characters.add(object);
+					++level.characterCount;
 					break;
 				case "X":
 					object = new Crate(level, [row, col]);
@@ -146,6 +149,13 @@ class Level {
 
 	@private
 	constructor() {}
+
+	// Gets the currently selected character or null if there are no characters left.
+	function getCurrentCharacter() {
+		if (this.characters.length == 0) return null;
+		this.characterIdx = this.characterIdx % this.characters.length;
+		return this.characters[this.characterIdx];
+	}
 
 	// Gets the position adjacent to "position", towards "direction".
 	function neighbor(position, direction) {
@@ -177,8 +187,15 @@ class Level {
 
 	// Whether the current character can summon from the future at the given row-column position.
 	function canSummonAt(position) {
+		currentCharacter = this.getCurrentCharacter();
+
+		// Need a character to summon.
+		if (currentCharacter == null) {
+			return false;
+		}
+
 		// Can't summon more than one future character from the current character instance.
-		if (this.characters[this.characterIdx].returnPoint != null) {
+		if (currentCharacter.returnPoint != null) {
 			return false;
 		}
 
@@ -216,13 +233,13 @@ class Level {
 			return;
 		}
 
-		currentCharacter = this.characters[this.characterIdx];
+		currentCharacter = this.getCurrentCharacter();
 		// Create future character.
 		futureCharacter = new Character(this, position.clone());
 		this.objects[position[0]][position[1]] = futureCharacter;
-		// Add the new character after the current character and switch control to it.
+		// Add the new character after the current character.
 		this.characters.insert(this.characterIdx + 1, futureCharacter);
-		++this.characterIdx;
+		++this.characterCount;
 		// Create a return point where the future character came from.
 		returnPoint = new ReturnPoint(this, position.clone(), 20, currentCharacter);
 		// Set the current character as the character who needs to return to the return point.
@@ -247,6 +264,7 @@ class Level {
 						if (this.characters[j] == character) {
 							this.objects[position[0]][position[1]] = null;
 							this.characters.remove(j);
+							--this.characterCount;
 							if (this.characterIdx > j) {
 								--this.characterIdx;
 							}
@@ -280,11 +298,11 @@ class Level {
 				switch (e.key) {
 					case KeyboardKey.Q:
 						// Previous character.
-						this.characterIdx = (this.characterIdx - 1) % this.characters.length;
+						--this.characterIdx;
 						break;
 					case KeyboardKey.E:
 						// Next character.
-						this.characterIdx = (this.characterIdx + 1) % this.characters.length;
+						++this.characterIdx;
 						break;
 					case KeyboardKey.SPACE:
 						// Wait.
@@ -304,11 +322,12 @@ class Level {
 				}
 				if (direction != null) {
 					// Try to push the current character.
-					if (this.characters[this.characterIdx].push(direction)) {
+					currentCharacter = this.getCurrentCharacter();
+					if (currentCharacter != null && currentCharacter.push(direction)) {
 						// If the character moved, advance time.
 						this.advanceTime();
 						// Update character's direction.
-						this.characters[this.characterIdx].direction = direction;
+						currentCharacter.direction = direction;
 					}
 				}
 			}
@@ -330,7 +349,7 @@ class Level {
 				if (object != null) {
 					object.draw();
 					// Draw selector.
-					if (this.characters.length > 1 && object == this.characters[this.characterIdx]) {
+					if (this.characters.length > 1 && object == this.getCurrentCharacter()) {
 						xy = this.rowColToXY(row, col);
 						Images.get("images/selector.png").draw(xy[0], xy[1]);
 					}

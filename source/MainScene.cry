@@ -31,12 +31,14 @@ class MainScene : AbstractScene {
 
 		// Check for logical inconsistency.
 		if (!this.level.consistent) {
+			print("Defeat!");
 			this.switchScene(new MainScene());
 			return;
 		}
 
 		// Check for victory.
-		if (this.level.characters.length == 0 && this.level.returnPoints.length == 0) {
+		if (this.level.characterCount == 0) {
+			print("Victory!");
 			this.switchScene(new MainScene());
 			return;
 		}
