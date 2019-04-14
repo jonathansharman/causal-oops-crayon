@@ -26,6 +26,7 @@ class Floor : Tile {
 	}
 
 	function receiveFrom(object, direction) {
+		print("Floor.receiveFrom(): " + this + " / " + object);
 		object.enterFloor(this, direction);
 	}
 }
@@ -41,7 +42,7 @@ class Wall : Tile {
 	function isObstacle() { return true; }
 
 	function receiveFrom(object, direction) {
-		object.enterWall(this, direction);
+		return object.enterWall(this, direction);
 	}
 }
 
@@ -56,7 +57,7 @@ class Ice : Tile {
 	function isSlippery() { return true; }
 
 	function receiveFrom(object, direction) {
-		object.enterIce(this, direction);
+		return object.enterIce(this, direction);
 	}
 }
 
@@ -69,7 +70,7 @@ class Hole : Tile {
 	}
 
 	function receiveFrom(object, direction) {
-		object.enterHole(this, direction);
+		return object.enterHole(this, direction);
 	}
 }
 
@@ -82,6 +83,6 @@ class Stairs : Tile {
 	}
 
 	function receiveFrom(object, direction) {
-		object.enterStairs(this, direction);
+		return object.enterStairs(this, direction);
 	}
 }
