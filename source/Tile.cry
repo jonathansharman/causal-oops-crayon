@@ -1,5 +1,5 @@
 import Graphics2D;
-import TwoCansAlpha2;
+import TwoCansAlpha4;
 
 // A tile in a level.
 class Tile {
@@ -26,8 +26,7 @@ class Floor : Tile {
 	}
 
 	function receiveFrom(object, direction) {
-		print("Floor.receiveFrom(): " + this + " / " + object);
-		object.enterFloor(this, direction);
+		return object.enterFloor(this, direction);
 	}
 }
 

@@ -1,6 +1,6 @@
 import Graphics2D;
 import Math;
-import TwoCansAlpha2;
+import TwoCansAlpha4;
 
 // An object in a level.
 class Object {
@@ -31,7 +31,6 @@ class Object {
 
 		// Try to push this.
 		neighborTile = this.level.tiles[neighborPosition[0]][neighborPosition[1]];
-		print("Bout to push...");
 		return neighborTile.receiveFrom(this, direction);
 		if (neighborTile.isObstacle()) {
 			// Blocked.
@@ -50,7 +49,6 @@ class Object {
 	}
 
 	function enterFloor(floor, direction) {
-		print("Object.enterFloor(): " + this + " / " + floor);
 		this.level.objects[this.position[0]][this.position[1]] = null;
 		this.level.objects[floor.position[0]][floor.position[1]] = this;
 		this.position = floor.position;
@@ -65,6 +63,7 @@ class Object {
 		this.level.objects[this.position[0]][this.position[1]] = null;
 		this.level.objects[floor.position[0]][floor.position[1]] = this;
 		this.position = floor.position;
+		this.push(direction);
 		return true;
 	}
 
@@ -130,7 +129,6 @@ class IceBlock : Object {
 	}
 
 	function enterFloor(floor, direction) {
-		print("IceBlock.enterFloor()");
 		this.level.objects[this.position[0]][this.position[1]] = null;
 		this.level.objects[floor.position[0]][floor.position[1]] = this;
 		this.position = floor.position;
@@ -139,7 +137,6 @@ class IceBlock : Object {
 	}
 
 	function enterIce(floor, direction) {
-		print("IceBlock.enterIce()");
 		this.level.objects[this.position[0]][this.position[1]] = null;
 		this.level.objects[floor.position[0]][floor.position[1]] = this;
 		this.position = floor.position;

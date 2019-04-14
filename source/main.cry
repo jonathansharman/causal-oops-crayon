@@ -1,5 +1,5 @@
-﻿import TwoCansAlpha2;
+﻿import TwoCansAlpha4;
 
 function main() {
-	TwoCansAlpha2.startGame();
+	TwoCansAlpha4.startGame();
 }

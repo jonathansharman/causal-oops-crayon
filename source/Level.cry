@@ -2,7 +2,7 @@ import Graphics2D;
 import Math;
 import Random;
 import Resources;
-import TwoCansAlpha2;
+import TwoCansAlpha4;
 
 // Represents a game level and its current state.
 class Level {
