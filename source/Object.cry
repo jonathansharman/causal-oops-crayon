@@ -1,5 +1,4 @@
 import Graphics2D;
-import Math;
 import TwoCansAlpha4;
 
 // An object in a level.
@@ -30,26 +29,17 @@ class Object {
 		}
 
 		// Try to push this.
+		currentTile = this.level.tiles[this.position[0]][this.position[1]];
 		neighborTile = this.level.tiles[neighborPosition[0]][neighborPosition[1]];
-		return neighborTile.receiveFrom(this, direction);
-		if (neighborTile.isObstacle()) {
-			// Blocked.
-			return false;
+		if (neighborTile.acceptFrom(this, direction)) {
+			currentTile.evictTowards(this, direction);
+			return true;
 		} else {
-			// Move one.
-			this.level.objects[this.position[0]][this.position[1]] = null;
-			this.level.objects[neighborPosition[0]][neighborPosition[1]] = this;
-			this.position = neighborPosition;
+			return false;
 		}
-		if (this.level.tiles[this.position[0]][this.position[1]].isSlippery()) {
-			// Slide.
-			this.push(direction, strength);
-		}
-		return true;
 	}
 
 	function enterFloor(floor, direction) {
-		this.level.objects[this.position[0]][this.position[1]] = null;
 		this.level.objects[floor.position[0]][floor.position[1]] = this;
 		this.position = floor.position;
 		return true;
@@ -60,15 +50,15 @@ class Object {
 	}
 
 	function enterIce(floor, direction) {
-		this.level.objects[this.position[0]][this.position[1]] = null;
 		this.level.objects[floor.position[0]][floor.position[1]] = this;
 		this.position = floor.position;
-		this.push(direction);
+		if (direction != null) {
+			this.push(direction);
+		}
 		return true;
 	}
 
 	function enterStairs(floor, direction) {
-		this.level.objects[this.position[0]][this.position[1]] = null;
 		this.level.objects[floor.position[0]][floor.position[1]] = this;
 		this.position = floor.position;
 		return true;
@@ -79,6 +69,7 @@ class Object {
 class Character : Object {
 	field direction = Direction.DOWN;
 	field returnPoint = null;
+	field inLevel = true;
 
 	constructor(level, position) : base(level, position) {}
 
@@ -101,18 +92,79 @@ class Character : Object {
 		image.draw(xy[0], xy[1]);
 	}
 
-	function enterHole(floor, direction) {
-		this.level.objects[this.position[0]][this.position[1]] = null;
-		this.position = floor.position;
+	function removeFromLevel() {
 		for (i = 0; i < this.level.characters.length; ++i) {
 			if (this.level.characters[i] == this) {
+				this.level.objects[this.position[0]][this.position[1]] = null;
 				this.level.characters.remove(i);
-				break;
+				if (this.level.characterIdx > i) {
+					--this.level.characterIdx;
+				}
+				this.inLevel = false;
+				return;
 			}
 		}
-		if (this.level.characters.length > 0) {
-			this.level.characterIdx = (this.level.characterIdx % this.level.characters.length);
+	}
+
+	// Whether this character can summon itself from the future at the given row-column position.
+	function canSummonAt(position) {
+		// Can't summon more than one version of a character from the future at a time.
+		if (this.returnPoint != null) {
+			return false;
 		}
+
+		// Can't summon out of bounds.
+		if (position[0] < 0 || position[0] >= this.level.rowCount || position[1] < 0 || position[1] >= this.level.colCount) {
+			return false;
+		}
+
+		// Can't summon into certain tiles.
+		tile = this.level.tiles[position[0]][position[1]];
+		if (tile != null && !tile.isValidSummonTarget()) {
+			return false;
+		}
+
+		// Can't summon onto other objects.
+		if (this.level.objects[position[0]][position[1]] != null) {
+			return false;
+		}
+
+		return true;
+	}
+
+	// Summons the current character from the future at the given target position.
+	function summonFromFuture(position) {
+		if (!this.canSummonAt(position)) {
+			return;
+		}
+
+		// Create future character.
+		futureCharacter = new Character(this.level, position.clone());
+		// Add the new character after the current character.
+		this.level.characters.insert(this.level.characterIdx + 1, futureCharacter);
+		++this.level.characterCount;
+		// Put new character into the level.
+		this.level.tiles[position[0]][position[1]].acceptFrom(futureCharacter, null);
+		// Create a return point where the future character came from.
+		returnPoint = new ReturnPoint(this.level, position.clone(), 20, this);
+		// Set the current character as the character who needs to return to the return point.
+		this.returnPoint = returnPoint;
+		// Andvance time.
+		this.level.advanceTime();
+		// Add the return point to the list after advancing time so it starts at max time.
+		this.level.returnPoints.add(returnPoint);
+	}
+
+	function enterStairs(floor, direction) {
+		this.position = floor.position;
+		this.removeFromLevel();
+		--this.level.characterCount;
+		return true;
+	}
+
+	function enterHole(floor, direction) {
+		this.removeFromLevel();
+		this.position = floor.position;
 		this.level.tiles[floor.position[0]][floor.position[1]] = new TrappedCharacter(this.level, floor.position);
 		return true;
 	}
@@ -128,7 +180,6 @@ class Crate : Object {
 	}
 
 	function enterHole(floor, direction) {
-		this.level.objects[this.position[0]][this.position[1]] = null;
 		this.level.tiles[floor.position[0]][floor.position[1]] = new SunkenCrate(this.level, floor.position);
 		return true;
 	}
@@ -144,7 +195,6 @@ class IceBlock : Object {
 	}
 
 	function enterFloor(floor, direction) {
-		this.level.objects[this.position[0]][this.position[1]] = null;
 		this.level.objects[floor.position[0]][floor.position[1]] = this;
 		this.position = floor.position;
 		this.push(direction, 1);
@@ -152,7 +202,6 @@ class IceBlock : Object {
 	}
 
 	function enterIce(floor, direction) {
-		this.level.objects[this.position[0]][this.position[1]] = null;
 		this.level.objects[floor.position[0]][floor.position[1]] = this;
 		this.position = floor.position;
 		this.push(direction, 1);
@@ -160,50 +209,7 @@ class IceBlock : Object {
 	}
 
 	function enterHole(floor, direction) {
-		this.level.objects[this.position[0]][this.position[1]] = null;
 		this.level.tiles[floor.position[0]][floor.position[1]] = new Ice(this.level, floor.position);
 		return true;
-	}
-}
-
-// A point from which a character emerged from the future.
-class ReturnPoint : Object {
-	field time;
-	field character;
-
-	constructor(level, position, time, character) : base(level, position) {
-		this.time = time;
-		this.character = character;
-	}
-
-	function draw() {
-		xy = this.level.rowColToXY(this.position[0], this.position[1]);
-		xyCharacter = this.level.rowColToXY(this.character.position[0], this.character.position[1]);
-		// Draw triangle from character to return point, if not at same position.
-		if (this.character.position[0] != this.position[0] || this.character.position[1] != this.position[1]) {
-			angle = Math.arctan
-				( this.character.position[0] - this.position[0]
-				, this.character.position[1] - this.position[1]
-				);
-			Graphics2D.Draw.triangle
-				( xyCharacter[0] + TILE_SIZE / 2.0 * (1.0 + Math.cos(angle + Math.PI / 4.0))
-				, xyCharacter[1] + TILE_SIZE / 2.0 * (1.0 + Math.sin(angle + Math.PI / 4.0))
-				, xyCharacter[0] + TILE_SIZE / 2.0 * (1.0 + Math.cos(angle - Math.PI / 4.0))
-				, xyCharacter[1] + TILE_SIZE / 2.0 * (1.0 + Math.sin(angle - Math.PI / 4.0))
-				, xy[0] + TILE_SIZE / 2.0, xy[1] + TILE_SIZE / 2.0
-				, 0, 0, 0, 64
-				);
-		}
-		// Draw time.
-		time = this.time;
-		x = xyCharacter[0] + TILE_SIZE;
-		while (time > 0) {
-			digit = time % 10;
-			time /= 10;
-			image = Images.get("images/" + digit + ".png");
-			x -= image.width;
-			y = xyCharacter[1] + TILE_SIZE - image.height;
-			image.draw(x, y);
-		}
 	}
 }

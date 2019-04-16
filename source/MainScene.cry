@@ -15,13 +15,14 @@ class MainScene : AbstractScene {
 	field level;
 
 	constructor() : base() {
-		//this.level = Level.createRandom();
-		this.level = Level.loadFromFile("levels/test-1.txt");
+		this.level = new Level("levels/test-1.txt");
+		//this.level = new Level("levels/test-2.txt");
 	}
 
 	function update(inputManager, events) {
 		// Check for manual level reset.
 		if (inputManager.isKeyPressedThisFrame(KeyboardKey.ESCAPE)) {
+			print("Defeat!");
 			this.switchScene(new MainScene());
 			return;
 		}
@@ -31,13 +32,13 @@ class MainScene : AbstractScene {
 
 		// Check for logical inconsistency.
 		if (!this.level.consistent) {
-			print("Defeat!");
+			print("Contradiction!");
 			this.switchScene(new MainScene());
 			return;
 		}
 
 		// Check for victory.
-		if (this.level.characterCount == 0) {
+		if (this.level.characterCount == 0 && this.level.returnPoints.length == 0) {
 			print("Victory!");
 			this.switchScene(new MainScene());
 			return;

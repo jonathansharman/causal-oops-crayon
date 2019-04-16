@@ -13,8 +13,13 @@ class Tile {
 		this.position = position;
 	}
 
-	function isObstacle() { return false; }
-	function isSlippery() { return false; }
+	function evictTowards(object, direction) {
+		this.level.objects[this.position[0]][this.position[1]] = null;
+	}
+
+	function isValidSummonTarget() {
+		return true;
+	}
 }
 
 class Floor : Tile {
@@ -25,7 +30,7 @@ class Floor : Tile {
 		Images.get("images/floor.png").draw(xy[0], xy[1]);
 	}
 
-	function receiveFrom(object, direction) {
+	function acceptFrom(object, direction) {
 		return object.enterFloor(this, direction);
 	}
 }
@@ -38,10 +43,12 @@ class Wall : Tile {
 		Images.get("images/wall.png").draw(xy[0], xy[1]);
 	}
 
-	function isObstacle() { return true; }
-
-	function receiveFrom(object, direction) {
+	function acceptFrom(object, direction) {
 		return object.enterWall(this, direction);
+	}
+
+	function isValidSummonTarget() {
+		return false;
 	}
 }
 
@@ -53,9 +60,7 @@ class Ice : Tile {
 		Images.get("images/ice.png").draw(xy[0], xy[1]);
 	}
 
-	function isSlippery() { return true; }
-
-	function receiveFrom(object, direction) {
+	function acceptFrom(object, direction) {
 		return object.enterIce(this, direction);
 	}
 }
@@ -68,7 +73,7 @@ class Hole : Tile {
 		Images.get("images/hole.png").draw(xy[0], xy[1]);
 	}
 
-	function receiveFrom(object, direction) {
+	function acceptFrom(object, direction) {
 		return object.enterHole(this, direction);
 	}
 }
@@ -81,8 +86,82 @@ class Stairs : Tile {
 		Images.get("images/stairs.png").draw(xy[0], xy[1]);
 	}
 
-	function receiveFrom(object, direction) {
+	function acceptFrom(object, direction) {
 		return object.enterStairs(this, direction);
+	}
+}
+
+class Door : Tile {
+	field idx = 0;
+
+	constructor(idx, level, position) : base(level, position) {
+		this.idx = idx;
+	}
+
+	function open() {
+		return this.level.doors[this.idx] == 0 || this.level.objects[this.position[0]][this.position[1]] != null;
+	}
+
+	function draw() {
+		xy = this.level.rowColToXY(this.position[0], this.position[1]);
+		image = this.open() ? Images.get("images/floor.png") : Images.get("images/wall.png");
+		image.draw(xy[0], xy[1]);
+	}
+
+	function isValidSummonTarget() {
+		return this.open();
+	}
+
+	function acceptFrom(object, direction) {
+		return this.open()
+			? object.enterFloor(this, direction)
+			: object.enterWall(this, direction)
+			;
+	}
+}
+
+class PressureSwitch : Tile {
+	field doorIdx;
+
+	constructor(doorIdx, level, position) : base(level, position) {
+		this.doorIdx = doorIdx;
+	}
+
+	function draw() {
+		xy = this.level.rowColToXY(this.position[0], this.position[1]);
+		Images.get("images/floor.png").draw(xy[0], xy[1]);
+		button_size = TILE_SIZE / 2.0;
+		switch (this.doorIdx) {
+			case 0:
+				color = [255, 0, 0];
+				break;
+			case 1:
+				color = [0, 255, 0];
+				break;
+			case 2:
+				color = [0, 0, 255];
+				break;
+		}
+		Graphics2D.Draw.ellipse
+			( xy[0] + (TILE_SIZE - button_size + 1.0) / 2.0
+			, xy[1] + (TILE_SIZE - button_size + 1.0) / 2.0
+			, button_size, button_size
+			, color[0], color[1], color[2]
+			);
+	}
+
+	function acceptFrom(object, direction) {
+		if (object.enterFloor(this, direction)) {
+			--this.level.doors[this.doorIdx];
+			return true;
+		} else {
+			return false;
+		}
+	}
+
+	function evictTowards(object, direction) {
+		++this.level.doors[this.doorIdx];
+		this.level.objects[this.position[0]][this.position[1]] = null;
 	}
 }
 
