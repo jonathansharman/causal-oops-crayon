@@ -1,0 +1,13 @@
+import TwoCansAlpha4;
+
+// Draws a number with its lower-right corner at the given coordinates.
+function drawNumber(n, x, y) {
+	while (n > 0) {
+		digit = n % 10;
+		n /= 10;
+		image = Images.get("images/" + digit + ".png");
+		x -= image.width;
+		y_top = y - image.height;
+		image.draw(x, y_top);
+	}
+}

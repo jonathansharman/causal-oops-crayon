@@ -4,19 +4,18 @@ import TwoCansAlpha4;
 
 const X_RES = 640;
 const Y_RES = 480;
-
-const TILE_SIZE = 20;
-const MAX_COL_COUNT = X_RES / TILE_SIZE;
-const MAX_ROW_COUNT = Y_RES / TILE_SIZE;
-
 enum Direction { UP, DOWN, LEFT, RIGHT }
 
 class MainScene : AbstractScene {
 	field level;
 
 	constructor() : base() {
-		this.level = new Level("levels/test-1.txt");
+		//this.level = new Level("levels/test-1.txt");
 		//this.level = new Level("levels/test-2.txt");
+		//this.level = new Level("levels/test-3.txt");
+
+		//this.level = new Level("levels/1.txt");
+		this.level = new Level("levels/2.txt");
 	}
 
 	function update(inputManager, events) {

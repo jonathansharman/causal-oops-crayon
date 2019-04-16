@@ -4,6 +4,15 @@ import Random;
 import Resources;
 import TwoCansAlpha4;
 
+const TILE_SIZE = 20;
+const MAX_COL_COUNT = X_RES / TILE_SIZE;
+const MAX_ROW_COUNT = Y_RES / TILE_SIZE;
+
+const MIN_SUMMON_TIME = 1;
+const DFLT_SUMMON_TIME = 20;
+const MAX_SUMMON_TIME = 99;
+const SUMMON_TIME_STEP = 10;
+
 // Represents a game level and its current state.
 class Level {
 	field rowCount;
@@ -28,7 +37,8 @@ class Level {
 	field consistent = true;
 
 	field summoning = false;
-	field hoveredRowCol;
+	field summonTime;
+	field mousePosition;
 
 	// Loads the level from file.
 	constructor(filename) {
@@ -46,6 +56,9 @@ class Level {
 		while (idx < levelText.length) {
 			// Get tile.
 			switch (levelText[idx]) {
+				case "-":
+					this.tiles[row].add(new Blank(this, [row, col]));
+					break;
 				case ".":
 					this.tiles[row].add(new Floor(this, [row, col]));
 					break;
@@ -177,54 +190,33 @@ class Level {
 
 		if (this.summoning) {
 			mousePosition = inputManager.getMousePosition();
-			this.hoveredRowCol = this.xyToRowCol(mousePosition[0], mousePosition[1]);
+			this.mousePosition = mousePosition;
 			for (e : events) {
 				if (e.type == EventType.MOUSE_PRESS) {
 					// Summon.
 					currentCharacter = this.getCurrentCharacter();
 					if (currentCharacter != null) {
-						currentCharacter.summonFromFuture(this.xyToRowCol(e.x, e.y));
+						currentCharacter.summonFromFuture(this.xyToRowCol(e.x, e.y), this.summonTime);
+						this.summonTime = DFLT_SUMMON_TIME;
 					}
 				} else if (e.type == EventType.KEY && e.down) {
-					direction = null;
 					switch (e.key) {
-						case KeyboardKey.Q:
-							// Previous character.
-							--this.characterIdx;
-							break;
-						case KeyboardKey.E:
-							// Next character.
-							++this.characterIdx;
-							break;
-						case KeyboardKey.SPACE:
-							// Wait.
-							this.advanceTime();
-							break;
-						// Movement commands.
-						case KeyboardKey.UP:    direction = Direction.UP;    break;
-						case KeyboardKey.DOWN:  direction = Direction.DOWN;  break;
-						case KeyboardKey.LEFT:  direction = Direction.LEFT;  break;
-						case KeyboardKey.RIGHT: direction = Direction.RIGHT; break;
-						case KeyboardKey.W:     direction = Direction.UP;    break;
-						case KeyboardKey.S:     direction = Direction.DOWN;  break;
-						case KeyboardKey.A:     direction = Direction.LEFT;  break;
-						case KeyboardKey.D:     direction = Direction.RIGHT; break;
+						case KeyboardKey.UP:    ++this.summonTime;                   break;
+						case KeyboardKey.DOWN:  --this.summonTime;                   break;
+						case KeyboardKey.LEFT:  this.summonTime -= SUMMON_TIME_STEP; break;
+						case KeyboardKey.RIGHT: this.summonTime += SUMMON_TIME_STEP; break;
+						case KeyboardKey.W:     ++this.summonTime;                   break;
+						case KeyboardKey.S:     --this.summonTime;                   break;
+						case KeyboardKey.A:     this.summonTime -= SUMMON_TIME_STEP; break;
+						case KeyboardKey.D:     this.summonTime += SUMMON_TIME_STEP; break;
 						default:
 							break;
 					}
-					if (direction != null) {
-						// Try to push the current character.
-						currentCharacter = this.getCurrentCharacter();
-						if (currentCharacter != null && currentCharacter.push(direction)) {
-							// If the character moved, advance time.
-							this.advanceTime();
-							// Update character's direction.
-							currentCharacter.direction = direction;
-						}
-					}
+					this.summonTime = Math.max(MIN_SUMMON_TIME, Math.min(MAX_SUMMON_TIME, this.summonTime));
 				}
 			}
 		} else {
+			this.summonTime = DFLT_SUMMON_TIME;
 			for (e : events) {
 				if (e.type == EventType.KEY && e.down) {
 					direction = null;
@@ -273,7 +265,10 @@ class Level {
 		for (row = 0; row < this.rowCount; ++row) {
 			for (col = 0; col < this.colCount; ++col) {
 				// Draw tiles.
-				this.tiles[row][col].draw();
+				tile = this.tiles[row][col];
+				if (tile != null) {
+					tile.draw();
+				}
 
 				// Draw objects.
 				object = this.objects[row][col];
@@ -295,17 +290,19 @@ class Level {
 
 		// Draw mouse hover highlight, if summoning.
 		if (this.summoning) {
-			hoverXY = this.rowColToXY(this.hoveredRowCol[0], this.hoveredRowCol[1]);
+			hoveredRowCol = this.xyToRowCol(this.mousePosition[0], this.mousePosition[1]);
+			highlightXY = this.rowColToXY(hoveredRowCol[0], hoveredRowCol[1]);
 			currentCharacter = this.getCurrentCharacter();
-			highlightRGB = (currentCharacter != null && currentCharacter.canSummonAt(this.hoveredRowCol))
+			highlightRGB = (currentCharacter != null && currentCharacter.canSummonAt(hoveredRowCol))
 				? [255, 255, 255]
 				: [255, 96, 96]
 				;
 			Graphics2D.Draw.rectangle
-				( hoverXY[0] + 1, hoverXY[1] + 1
+				( highlightXY[0] + 1, highlightXY[1] + 1
 				, TILE_SIZE - 1, TILE_SIZE - 1
 				, highlightRGB[0], highlightRGB[1], highlightRGB[2], 128
 				);
+			drawNumber(this.summonTime, this.mousePosition[0], this.mousePosition[1]);
 		}
 	}
 }

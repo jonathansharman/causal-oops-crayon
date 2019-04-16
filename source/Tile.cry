@@ -52,6 +52,12 @@ class Wall : Tile {
 	}
 }
 
+class Blank : Wall {
+	constructor(level, position) : base(level, position) {}
+
+	function draw() {}
+}
+
 class Ice : Tile {
 	constructor(level, position) : base(level, position) {}
 

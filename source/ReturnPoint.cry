@@ -55,15 +55,6 @@ class ReturnPoint {
 				);
 		}
 		// Draw time.
-		time = this.time;
-		x = xyCharacter[0] + TILE_SIZE;
-		while (time > 0) {
-			digit = time % 10;
-			time /= 10;
-			image = Images.get("images/" + digit + ".png");
-			x -= image.width;
-			y = xyCharacter[1] + TILE_SIZE - image.height;
-			image.draw(x, y);
-		}
+		drawNumber(this.time, xyCharacter[0] + TILE_SIZE, xyCharacter[1] + TILE_SIZE);
 	}
 }

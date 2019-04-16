@@ -95,7 +95,7 @@ class Character : Object {
 	function removeFromLevel() {
 		for (i = 0; i < this.level.characters.length; ++i) {
 			if (this.level.characters[i] == this) {
-				this.level.objects[this.position[0]][this.position[1]] = null;
+				this.level.tiles[this.position[0]][this.position[1]].evictTowards(this, null);
 				this.level.characters.remove(i);
 				if (this.level.characterIdx > i) {
 					--this.level.characterIdx;
@@ -132,8 +132,8 @@ class Character : Object {
 		return true;
 	}
 
-	// Summons the current character from the future at the given target position.
-	function summonFromFuture(position) {
+	// Summons the current character at the given target position from the given time in the future.
+	function summonFromFuture(position, time) {
 		if (!this.canSummonAt(position)) {
 			return;
 		}
@@ -142,11 +142,12 @@ class Character : Object {
 		futureCharacter = new Character(this.level, position.clone());
 		// Add the new character after the current character.
 		this.level.characters.insert(this.level.characterIdx + 1, futureCharacter);
+		++this.level.characterIdx;
 		++this.level.characterCount;
 		// Put new character into the level.
 		this.level.tiles[position[0]][position[1]].acceptFrom(futureCharacter, null);
 		// Create a return point where the future character came from.
-		returnPoint = new ReturnPoint(this.level, position.clone(), 20, this);
+		returnPoint = new ReturnPoint(this.level, position.clone(), time, this);
 		// Set the current character as the character who needs to return to the return point.
 		this.returnPoint = returnPoint;
 		// Andvance time.
