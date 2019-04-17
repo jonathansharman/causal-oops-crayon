@@ -46,15 +46,15 @@ class ReturnPoint {
 				, this.character.position[1] - this.position[1]
 				);
 			Graphics2D.Draw.triangle
-				( xyCharacter[0] + TILE_SIZE / 2.0 * (1.0 + Math.cos(angle + Math.PI / 4.0))
-				, xyCharacter[1] + TILE_SIZE / 2.0 * (1.0 + Math.sin(angle + Math.PI / 4.0))
-				, xyCharacter[0] + TILE_SIZE / 2.0 * (1.0 + Math.cos(angle - Math.PI / 4.0))
-				, xyCharacter[1] + TILE_SIZE / 2.0 * (1.0 + Math.sin(angle - Math.PI / 4.0))
-				, xy[0] + TILE_SIZE / 2.0, xy[1] + TILE_SIZE / 2.0
+				( xyCharacter[0] + this.level.tileSize / 2.0 * (1.0 + Math.cos(angle + Math.PI / 4.0))
+				, xyCharacter[1] + this.level.tileSize / 2.0 * (1.0 + Math.sin(angle + Math.PI / 4.0))
+				, xyCharacter[0] + this.level.tileSize / 2.0 * (1.0 + Math.cos(angle - Math.PI / 4.0))
+				, xyCharacter[1] + this.level.tileSize / 2.0 * (1.0 + Math.sin(angle - Math.PI / 4.0))
+				, xy[0] + this.level.tileSize / 2.0, xy[1] + this.level.tileSize / 2.0
 				, 0, 0, 0, 64
 				);
 		}
 		// Draw time.
-		drawNumber(this.time, xyCharacter[0] + TILE_SIZE, xyCharacter[1] + TILE_SIZE);
+		this.level.drawNumber(this.time, xyCharacter[0] + this.level.tileSize, xyCharacter[1] + this.level.tileSize);
 	}
 }

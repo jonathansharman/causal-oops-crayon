@@ -89,7 +89,12 @@ class Character : Object {
 				break;
 		}
 		xy = this.level.rowColToXY(this.position[0], this.position[1]);
-		image.draw(xy[0], xy[1]);
+		this.level.drawTile(image, xy[0], xy[1]);
+		// Draw selector over this character if it's the selected character when there are multiple.
+		if (this.level.characters.length > 1 && this == this.level.getCurrentCharacter()) {
+			xy = this.level.rowColToXY(this.position[0], this.position[1]);
+			this.level.drawTile(Images.get("images/selector.png"), xy[0], xy[1]);
+		}
 	}
 
 	function removeFromLevel() {
@@ -177,7 +182,7 @@ class Crate : Object {
 
 	function draw() {
 		xy = this.level.rowColToXY(this.position[0], this.position[1]);
-		Images.get("images/crate.png").draw(xy[0], xy[1]);
+		this.level.drawTile(Images.get("images/crate.png"), xy[0], xy[1]);
 	}
 
 	function enterHole(floor, direction) {
@@ -192,7 +197,7 @@ class IceBlock : Object {
 
 	function draw() {
 		xy = this.level.rowColToXY(this.position[0], this.position[1]);
-		Images.get("images/ice-block.png").draw(xy[0], xy[1]);
+		this.level.drawTile(Images.get("images/ice-block.png"), xy[0], xy[1]);
 	}
 
 	function enterFloor(floor, direction) {

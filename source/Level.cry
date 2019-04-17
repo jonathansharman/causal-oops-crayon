@@ -4,9 +4,9 @@ import Random;
 import Resources;
 import TwoCansAlpha4;
 
-const TILE_SIZE = 20;
-const MAX_COL_COUNT = X_RES / TILE_SIZE;
-const MAX_ROW_COUNT = Y_RES / TILE_SIZE;
+const MIN_TILE_SIZE = 20;
+const MAX_COL_COUNT = X_RES / MIN_TILE_SIZE;
+const MAX_ROW_COUNT = Y_RES / MIN_TILE_SIZE;
 
 const MIN_SUMMON_TIME = 1;
 const DFLT_SUMMON_TIME = 20;
@@ -20,6 +20,8 @@ class Level {
 
 	field xMargin;
 	field yMargin;
+	field zoom;
+	field tileSize;
 
 	field tiles;
 
@@ -128,8 +130,14 @@ class Level {
 			++idx;
 			++col;
 		}
-		this.xMargin = (X_RES - this.colCount * TILE_SIZE) / 2;
-		this.yMargin = (Y_RES - this.rowCount * TILE_SIZE) / 2;
+		minWidth = this.colCount * MIN_TILE_SIZE;
+		minHeight = this.rowCount * MIN_TILE_SIZE;
+		// TODO: Reenable zoom later.
+		//this.zoom = Math.max(1, Math.min(Math.floor(1.0 * X_RES / minWidth), Math.floor(1.0 * Y_RES / minHeight)));
+		this.zoom = 1;
+		this.tileSize = MIN_TILE_SIZE * this.zoom;
+		this.xMargin = (X_RES - this.colCount * this.tileSize) / 2;
+		this.yMargin = (Y_RES - this.rowCount * this.tileSize) / 2;
 	}
 
 	// Gets the currently selected character or null if there are no characters left.
@@ -176,12 +184,12 @@ class Level {
 
 	// Converts (row, col) to (x, y).
 	function rowColToXY(row, col) {
-		return [this.xMargin + col * TILE_SIZE, this.yMargin + row * TILE_SIZE];
+		return [this.xMargin + col * this.tileSize, this.yMargin + row * this.tileSize];
 	}
 
 	// Converts (x, y) to (row, col).
 	function xyToRowCol(x, y) {
-		return [(y - this.yMargin) / TILE_SIZE, (x - this.xMargin) / TILE_SIZE];
+		return [(y - this.yMargin) / this.tileSize, (x - this.xMargin) / this.tileSize];
 	}
 
 	// Updates the level.
@@ -260,6 +268,25 @@ class Level {
 		}
 	}
 
+	// Draws a 21 x 21 tile image at (x, y).
+	function drawTile(image, x, y) {
+		// TODO: Reenable zoom later.
+		//image.drawStretched(x, y, this.tileSize, this.tileSize);
+		image.draw(x, y);
+	}
+
+	// Draws a number to the upper-left of (x, y).
+	function drawNumber(n, x, y) {
+		while (n > 0) {
+			digit = n % 10;
+			n /= 10;
+			image = Images.get("images/" + digit + ".png");
+			x -= image.width * this.zoom;
+			y_top = y - image.height * this.zoom;
+			image.drawStretched(x, y_top, MIN_TILE_SIZE, MIN_TILE_SIZE);
+		}
+	}
+
 	// Draws the level to the screen.
 	function draw() {
 		for (row = 0; row < this.rowCount; ++row) {
@@ -274,11 +301,6 @@ class Level {
 				object = this.objects[row][col];
 				if (object != null) {
 					object.draw();
-					// Draw selector over current character if there are multiple characters.
-					if (this.characters.length > 1 && object == this.getCurrentCharacter()) {
-						xy = this.rowColToXY(row, col);
-						Images.get("images/selector.png").draw(xy[0], xy[1]);
-					}
 				}
 			}
 		}
@@ -299,7 +321,7 @@ class Level {
 				;
 			Graphics2D.Draw.rectangle
 				( highlightXY[0] + 1, highlightXY[1] + 1
-				, TILE_SIZE - 1, TILE_SIZE - 1
+				, this.tileSize - 1, this.tileSize - 1
 				, highlightRGB[0], highlightRGB[1], highlightRGB[2], 128
 				);
 			drawNumber(this.summonTime, this.mousePosition[0], this.mousePosition[1]);

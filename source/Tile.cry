@@ -27,7 +27,7 @@ class Floor : Tile {
 
 	function draw() {
 		xy = this.level.rowColToXY(this.position[0], this.position[1]);
-		Images.get("images/floor.png").draw(xy[0], xy[1]);
+		this.level.drawTile(Images.get("images/floor.png"), xy[0], xy[1]);
 	}
 
 	function acceptFrom(object, direction) {
@@ -40,7 +40,7 @@ class Wall : Tile {
 
 	function draw() {
 		xy = this.level.rowColToXY(this.position[0], this.position[1]);
-		Images.get("images/wall.png").draw(xy[0], xy[1]);
+		this.level.drawTile(Images.get("images/wall.png"), xy[0], xy[1]);
 	}
 
 	function acceptFrom(object, direction) {
@@ -63,7 +63,7 @@ class Ice : Tile {
 
 	function draw() {
 		xy = this.level.rowColToXY(this.position[0], this.position[1]);
-		Images.get("images/ice.png").draw(xy[0], xy[1]);
+		this.level.drawTile(Images.get("images/ice.png"), xy[0], xy[1]);
 	}
 
 	function acceptFrom(object, direction) {
@@ -76,7 +76,7 @@ class Hole : Tile {
 
 	function draw() {
 		xy = this.level.rowColToXY(this.position[0], this.position[1]);
-		Images.get("images/hole.png").draw(xy[0], xy[1]);
+		this.level.drawTile(Images.get("images/hole.png"), xy[0], xy[1]);
 	}
 
 	function acceptFrom(object, direction) {
@@ -89,7 +89,7 @@ class Stairs : Tile {
 
 	function draw() {
 		xy = this.level.rowColToXY(this.position[0], this.position[1]);
-		Images.get("images/stairs.png").draw(xy[0], xy[1]);
+		this.level.drawTile(Images.get("images/stairs.png"), xy[0], xy[1]);
 	}
 
 	function acceptFrom(object, direction) {
@@ -111,7 +111,7 @@ class Door : Tile {
 	function draw() {
 		xy = this.level.rowColToXY(this.position[0], this.position[1]);
 		image = this.open() ? Images.get("images/floor.png") : Images.get("images/wall.png");
-		image.draw(xy[0], xy[1]);
+		this.level.drawTile(image, xy[0], xy[1]);
 	}
 
 	function isValidSummonTarget() {
@@ -135,8 +135,8 @@ class PressureSwitch : Tile {
 
 	function draw() {
 		xy = this.level.rowColToXY(this.position[0], this.position[1]);
-		Images.get("images/floor.png").draw(xy[0], xy[1]);
-		button_size = TILE_SIZE / 2.0;
+		this.level.drawTile(Images.get("images/floor.png"), xy[0], xy[1]);
+		button_size = this.level.tileSize / 2.0;
 		switch (this.doorIdx) {
 			case 0:
 				color = [255, 0, 0];
@@ -149,8 +149,8 @@ class PressureSwitch : Tile {
 				break;
 		}
 		Graphics2D.Draw.ellipse
-			( xy[0] + (TILE_SIZE - button_size + 1.0) / 2.0
-			, xy[1] + (TILE_SIZE - button_size + 1.0) / 2.0
+			( xy[0] + (this.level.tileSize - button_size + 1.0) / 2.0
+			, xy[1] + (this.level.tileSize - button_size + 1.0) / 2.0
 			, button_size, button_size
 			, color[0], color[1], color[2]
 			);
@@ -176,7 +176,7 @@ class SunkenCrate : Floor {
 
 	function draw() {
 		xy = this.level.rowColToXY(this.position[0], this.position[1]);
-		Images.get("images/sunken-crate.png").draw(xy[0], xy[1]);
+		this.level.drawTile(Images.get("images/sunken-crate.png"), xy[0], xy[1]);
 	}
 }
 
@@ -185,6 +185,6 @@ class TrappedCharacter : Floor {
 
 	function draw() {
 		xy = this.level.rowColToXY(this.position[0], this.position[1]);
-		Images.get("images/trapped-character.png").draw(xy[0], xy[1]);
+		this.level.drawTile(Images.get("images/trapped-character.png"), xy[0], xy[1]);
 	}
 }
