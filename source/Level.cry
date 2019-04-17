@@ -39,7 +39,7 @@ class Level {
 	field consistent = true;
 
 	field summoning = false;
-	field summonTime;
+	field summonTime = DFLT_SUMMON_TIME;
 	field mousePosition;
 
 	// Loads the level from file.
@@ -205,7 +205,6 @@ class Level {
 					currentCharacter = this.getCurrentCharacter();
 					if (currentCharacter != null) {
 						currentCharacter.summonFromFuture(this.xyToRowCol(e.x, e.y), this.summonTime);
-						this.summonTime = DFLT_SUMMON_TIME;
 					}
 				} else if (e.type == EventType.KEY && e.down) {
 					switch (e.key) {
@@ -224,7 +223,6 @@ class Level {
 				}
 			}
 		} else {
-			this.summonTime = DFLT_SUMMON_TIME;
 			for (e : events) {
 				if (e.type == EventType.KEY && e.down) {
 					direction = null;
@@ -283,7 +281,7 @@ class Level {
 			image = Images.get("images/" + digit + ".png");
 			x -= image.width * this.zoom;
 			y_top = y - image.height * this.zoom;
-			image.drawStretched(x, y_top, MIN_TILE_SIZE, MIN_TILE_SIZE);
+			image.drawStretched(x, y_top, image.width * this.zoom, image.height * this.zoom);
 		}
 	}
 
@@ -324,7 +322,7 @@ class Level {
 				, this.tileSize - 1, this.tileSize - 1
 				, highlightRGB[0], highlightRGB[1], highlightRGB[2], 128
 				);
-			drawNumber(this.summonTime, this.mousePosition[0], this.mousePosition[1]);
+			this.drawNumber(this.summonTime, this.mousePosition[0], this.mousePosition[1]);
 		}
 	}
 }
