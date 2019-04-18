@@ -194,11 +194,9 @@ class Level {
 
 	// Updates the level.
 	function update(inputManager, events) {
+		this.mousePosition = inputManager.getMousePosition();
 		this.summoning = inputManager.isShiftPressed();
-
 		if (this.summoning) {
-			mousePosition = inputManager.getMousePosition();
-			this.mousePosition = mousePosition;
 			for (e : events) {
 				if (e.type == EventType.MOUSE_PRESS) {
 					// Summon.
@@ -228,7 +226,17 @@ class Level {
 				this.advanceTime();
 			}
 			for (e : events) {
-				if (e.type == EventType.KEY && e.down) {
+				if (e.type == EventType.MOUSE_PRESS) {
+					// Switch to clicked character, if any.
+					clickedPosition = this.xyToRowCol(this.mousePosition[0], this.mousePosition[1]);
+					for (i = 0; i < this.characters.length; ++i) {
+						characterPosition = this.characters[i].position;
+						if (characterPosition[0] == clickedPosition[0] && characterPosition[1] == clickedPosition[1]) {
+							this.characterIdx = i;
+							break;
+						}
+					}
+				} else if (e.type == EventType.KEY && e.down) {
 					direction = null;
 					switch (e.key) {
 						case KeyboardKey.Q:
