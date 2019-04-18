@@ -30,7 +30,7 @@
 		{ "name": "enable_wasd", "value": true }
 	],
 
-	"target": [
+	"targets": [
 		{
 			"name": "csharp",
 			"platform": "csharp-app"

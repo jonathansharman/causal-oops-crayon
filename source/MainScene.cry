@@ -24,6 +24,9 @@ class MainScene : AbstractScene {
 			case 3:
 				return new Level("levels/4.txt");
 				break;
+			case 4:
+				return new Level("levels/5.txt");
+				break;
 			default:
 				return new Level("levels/test-1.txt");
 				break;
@@ -36,6 +39,16 @@ class MainScene : AbstractScene {
 	}
 
 	function update(inputManager, events) {
+		// Skip levels.
+		if (inputManager.isKeyPressedThisFrame(KeyboardKey.NUM_1)) {
+			this.switchScene(new MainScene(this.levelIdx - 1));
+			return;
+		}
+		if (inputManager.isKeyPressedThisFrame(KeyboardKey.NUM_2)) {
+			this.switchScene(new MainScene(this.levelIdx + 1));
+			return;
+		}
+
 		// Check for manual level reset.
 		if (inputManager.isKeyPressedThisFrame(KeyboardKey.ESCAPE)) {
 			print("Defeat!");

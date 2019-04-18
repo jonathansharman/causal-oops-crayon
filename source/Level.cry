@@ -223,6 +223,10 @@ class Level {
 				}
 			}
 		} else {
+			if (inputManager.isKeyPressed(KeyboardKey.ENTER)) {
+				// Fast forward.
+				this.advanceTime();
+			}
 			for (e : events) {
 				if (e.type == EventType.KEY && e.down) {
 					direction = null;
@@ -236,7 +240,7 @@ class Level {
 							++this.characterIdx;
 							break;
 						case KeyboardKey.SPACE:
-							// Wait.
+							// Wait one turn.
 							this.advanceTime();
 							break;
 						// Movement commands.
