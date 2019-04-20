@@ -6,15 +6,15 @@ class Tile {
 	// The level this object is in.
 	field level;
 	// Row-column position.
-	field position;
+	field rowCol;
 
-	constructor(level, position) {
+	constructor(level, rowCol) {
 		this.level = level;
-		this.position = position;
+		this.rowCol = rowCol;
 	}
 
 	function evictTowards(object, direction) {
-		this.level.objects[this.position[0]][this.position[1]] = null;
+		this.level.objects[this.rowCol[0]][this.rowCol[1]] = null;
 	}
 
 	function isValidSummonTarget() {
@@ -23,11 +23,10 @@ class Tile {
 }
 
 class Floor : Tile {
-	constructor(level, position) : base(level, position) {}
+	constructor(level, rowCol) : base(level, rowCol) {}
 
 	function draw() {
-		xy = this.level.rowColToXY(this.position[0], this.position[1]);
-		this.level.drawTile(Images.get("images/floor.png"), xy[0], xy[1]);
+		this.level.drawTile(Images.get("images/floor.png"), this.rowCol);
 	}
 
 	function acceptFrom(object, direction) {
@@ -36,11 +35,10 @@ class Floor : Tile {
 }
 
 class Wall : Tile {
-	constructor(level, position) : base(level, position) {}
+	constructor(level, rowCol) : base(level, rowCol) {}
 
 	function draw() {
-		xy = this.level.rowColToXY(this.position[0], this.position[1]);
-		this.level.drawTile(Images.get("images/wall.png"), xy[0], xy[1]);
+		this.level.drawTile(Images.get("images/wall.png"), this.rowCol);
 	}
 
 	function acceptFrom(object, direction) {
@@ -53,17 +51,16 @@ class Wall : Tile {
 }
 
 class Blank : Wall {
-	constructor(level, position) : base(level, position) {}
+	constructor(level, rowCol) : base(level, rowCol) {}
 
 	function draw() {}
 }
 
 class Ice : Tile {
-	constructor(level, position) : base(level, position) {}
+	constructor(level, rowCol) : base(level, rowCol) {}
 
 	function draw() {
-		xy = this.level.rowColToXY(this.position[0], this.position[1]);
-		this.level.drawTile(Images.get("images/ice.png"), xy[0], xy[1]);
+		this.level.drawTile(Images.get("images/ice.png"), this.rowCol);
 	}
 
 	function acceptFrom(object, direction) {
@@ -72,11 +69,10 @@ class Ice : Tile {
 }
 
 class Hole : Tile {
-	constructor(level, position) : base(level, position) {}
+	constructor(level, rowCol) : base(level, rowCol) {}
 
 	function draw() {
-		xy = this.level.rowColToXY(this.position[0], this.position[1]);
-		this.level.drawTile(Images.get("images/hole.png"), xy[0], xy[1]);
+		this.level.drawTile(Images.get("images/hole.png"), this.rowCol);
 	}
 
 	function acceptFrom(object, direction) {
@@ -85,11 +81,11 @@ class Hole : Tile {
 }
 
 class Stairs : Tile {
-	constructor(level, position) : base(level, position) {}
+	constructor(level, rowCol) : base(level, rowCol) {}
 
 	function draw() {
-		xy = this.level.rowColToXY(this.position[0], this.position[1]);
-		this.level.drawTile(Images.get("images/stairs.png"), xy[0], xy[1] - 9);
+		image = Images.get("images/stairs.png");
+		this.level.drawTile(image, this.rowCol, [0, MIN_TILE_SIZE - image.height + 1]);
 	}
 
 	function acceptFrom(object, direction) {
@@ -100,18 +96,17 @@ class Stairs : Tile {
 class Door : Tile {
 	field idx = 0;
 
-	constructor(idx, level, position) : base(level, position) {
+	constructor(idx, level, rowCol) : base(level, rowCol) {
 		this.idx = idx;
 	}
 
 	function open() {
-		return this.level.doors[this.idx] == 0 || this.level.objects[this.position[0]][this.position[1]] != null;
+		return this.level.doors[this.idx] == 0 || this.level.objects[this.rowCol[0]][this.rowCol[1]] != null;
 	}
 
 	function draw() {
-		xy = this.level.rowColToXY(this.position[0], this.position[1]);
 		if (this.open()) {
-			this.level.drawTile(Images.get("images/floor.png"), xy[0], xy[1]);
+			this.level.drawTile(Images.get("images/floor.png"), this.rowCol);
 			switch (this.idx) {
 				case 0:
 					image = Images.get("images/door-open-red.png");
@@ -136,7 +131,7 @@ class Door : Tile {
 					break;
 			}
 		}
-		this.level.drawTile(image, xy[0], xy[1]);
+		this.level.drawTile(image, this.rowCol);
 	}
 
 	function isValidSummonTarget() {
@@ -154,13 +149,12 @@ class Door : Tile {
 class PressureSwitch : Tile {
 	field doorIdx;
 
-	constructor(doorIdx, level, position) : base(level, position) {
+	constructor(doorIdx, level, rowCol) : base(level, rowCol) {
 		this.doorIdx = doorIdx;
 	}
 
 	function draw() {
-		xy = this.level.rowColToXY(this.position[0], this.position[1]);
-		this.level.drawTile(Images.get("images/floor.png"), xy[0], xy[1]);
+		this.level.drawTile(Images.get("images/floor.png"), this.rowCol);
 		button_size = this.level.tileSize / 2.0;
 		switch (this.doorIdx) {
 			case 0:
@@ -173,7 +167,7 @@ class PressureSwitch : Tile {
 				image = Images.get("images/pressure-switch-blue.png");
 				break;
 		}
-		this.level.drawTile(image, xy[0], xy[1]);
+		this.level.drawTile(image, this.rowCol);
 	}
 
 	function acceptFrom(object, direction) {
@@ -187,34 +181,31 @@ class PressureSwitch : Tile {
 
 	function evictTowards(object, direction) {
 		++this.level.doors[this.doorIdx];
-		this.level.objects[this.position[0]][this.position[1]] = null;
+		this.level.objects[this.rowCol[0]][this.rowCol[1]] = null;
 	}
 }
 
 class SunkenCrate : Floor {
-	constructor(level, position) : base(level, position) {}
+	constructor(level, rowCol) : base(level, rowCol) {}
 
 	function draw() {
-		xy = this.level.rowColToXY(this.position[0], this.position[1]);
-		this.level.drawTile(Images.get("images/sunken-crate.png"), xy[0], xy[1]);
+		this.level.drawTile(Images.get("images/sunken-crate.png"), this.rowCol);
 	}
 }
 
 class TrappedCharacter : Floor {
-	constructor(level, position) : base(level, position) {}
+	constructor(level, rowCol) : base(level, rowCol) {}
 
 	function draw() {
-		xy = this.level.rowColToXY(this.position[0], this.position[1]);
-		this.level.drawTile(Images.get("images/trapped-character.png"), xy[0], xy[1]);
+		this.level.drawTile(Images.get("images/trapped-character.png"), this.rowCol);
 	}
 }
 
 class ElectricFloor : Tile {
-	constructor(level, position) : base(level, position) {}
+	constructor(level, rowCol) : base(level, rowCol) {}
 
 	function draw() {
-		xy = this.level.rowColToXY(this.position[0], this.position[1]);
-		this.level.drawTile(Images.get("images/electric-floor.png"), xy[0], xy[1]);
+		this.level.drawTile(Images.get("images/electric-floor.png"), this.rowCol);
 	}
 
 	function acceptFrom(object, direction) {

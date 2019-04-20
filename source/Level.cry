@@ -135,9 +135,7 @@ class Level {
 		}
 		minWidth = this.colCount * MIN_TILE_SIZE;
 		minHeight = this.rowCount * MIN_TILE_SIZE;
-		// TODO: Reenable zoom later.
-		//this.zoom = Math.max(1, Math.min(Math.floor(1.0 * X_RES / minWidth), Math.floor(1.0 * Y_RES / minHeight)));
-		this.zoom = 1;
+		this.zoom = Math.max(1, Math.min(Math.floor(1.0 * X_RES / minWidth), Math.floor(1.0 * Y_RES / minHeight)));
 		this.tileSize = MIN_TILE_SIZE * this.zoom;
 		this.xMargin = (X_RES - this.colCount * this.tileSize) / 2;
 		this.yMargin = (Y_RES - this.rowCount * this.tileSize) / 2;
@@ -150,20 +148,20 @@ class Level {
 		return this.characters[this.characterIdx];
 	}
 
-	// Gets the position adjacent to "position", towards "direction".
-	function neighbor(position, direction) {
+	// Gets the row-column position adjacent to rowCol, towards direction.
+	function neighbor(rowCol, direction) {
 		switch (direction) {
 			case Direction.UP:
-				return [(position[0] - 1) % this.rowCount, position[1]];
+				return [(rowCol[0] - 1) % this.rowCount, rowCol[1]];
 				break;
 			case Direction.DOWN:
-				return [(position[0] + 1) % this.rowCount, position[1]];
+				return [(rowCol[0] + 1) % this.rowCount, rowCol[1]];
 				break;
 			case Direction.LEFT:
-				return [position[0], (position[1] - 1) % this.colCount];
+				return [rowCol[0], (rowCol[1] - 1) % this.colCount];
 				break;
 			case Direction.RIGHT:
-				return [position[0], (position[1] + 1) % this.colCount];
+				return [rowCol[0], (rowCol[1] + 1) % this.colCount];
 				break;
 		}
 	}
@@ -186,13 +184,13 @@ class Level {
 	}
 
 	// Converts (row, col) to (x, y).
-	function rowColToXY(row, col) {
-		return [this.xMargin + col * this.tileSize, this.yMargin + row * this.tileSize];
+	function rowColToXY(rowCol) {
+		return [this.xMargin + rowCol[1] * this.tileSize, this.yMargin + rowCol[0] * this.tileSize];
 	}
 
 	// Converts (x, y) to (row, col).
-	function xyToRowCol(x, y) {
-		return [(y - this.yMargin) / this.tileSize, (x - this.xMargin) / this.tileSize];
+	function xyToRowCol(xy) {
+		return [(xy[1] - this.yMargin) / this.tileSize, (xy[0] - this.xMargin) / this.tileSize];
 	}
 
 	// Updates the level.
@@ -205,7 +203,7 @@ class Level {
 					// Summon.
 					currentCharacter = this.getCurrentCharacter();
 					if (currentCharacter != null) {
-						currentCharacter.summonFromFuture(this.xyToRowCol(e.x, e.y), this.summonTime);
+						currentCharacter.summonFromFuture(this.xyToRowCol([e.x, e.y]), this.summonTime);
 					}
 				} else if (e.type == EventType.KEY && e.down) {
 					switch (e.key) {
@@ -231,9 +229,9 @@ class Level {
 			for (e : events) {
 				if (e.type == EventType.MOUSE_PRESS) {
 					// Switch to clicked character, if any.
-					clickedPosition = this.xyToRowCol(this.mousePosition[0], this.mousePosition[1]);
+					clickedPosition = this.xyToRowCol(this.mousePosition);
 					for (i = 0; i < this.characters.length; ++i) {
-						characterPosition = this.characters[i].position;
+						characterPosition = this.characters[i].rowCol;
 						if (characterPosition[0] == clickedPosition[0] && characterPosition[1] == clickedPosition[1]) {
 							this.characterIdx = i;
 							break;
@@ -284,22 +282,27 @@ class Level {
 		}
 	}
 
-	// Draws a 21 x 21 tile image at (x, y).
-	function drawTile(image, x, y) {
-		// TODO: Reenable zoom later.
-		//image.drawStretched(x, y, this.tileSize, this.tileSize);
-		image.draw(x, y);
+	// Draws a 21 x 21 tile image at the given row-column position, with the given offsets (at 1 x zoom).
+	function drawTile(image, rowCol, offset = [0, 0]) {
+		xy = this.rowColToXY(rowCol);
+		image.drawStretched
+			( xy[0] + offset[0] * this.zoom
+			, xy[1] + offset[1] * this.zoom
+			, image.width * this.zoom
+			, image.height * this.zoom
+			);
 	}
 
 	// Draws a number to the upper-left of (x, y).
-	function drawNumber(n, x, y) {
+	function drawNumber(n, xy) {
+		xyCopy = xy.clone();
 		while (n > 0) {
 			digit = n % 10;
 			n /= 10;
 			image = Images.get("images/" + digit + ".png");
-			x -= image.width * this.zoom;
-			y_top = y - image.height * this.zoom;
-			image.drawStretched(x, y_top, image.width * this.zoom, image.height * this.zoom);
+			xyCopy[0] -= image.width * this.zoom;
+			y_top = xyCopy[1] - image.height * this.zoom;
+			image.drawStretched(xyCopy[0], y_top, image.width * this.zoom, image.height * this.zoom);
 		}
 	}
 
@@ -328,8 +331,8 @@ class Level {
 
 		// Draw mouse hover highlight, if summoning.
 		if (this.summoning) {
-			hoveredRowCol = this.xyToRowCol(this.mousePosition[0], this.mousePosition[1]);
-			highlightXY = this.rowColToXY(hoveredRowCol[0], hoveredRowCol[1]);
+			hoveredRowCol = this.xyToRowCol(this.mousePosition);
+			highlightXY = this.rowColToXY(hoveredRowCol);
 			currentCharacter = this.getCurrentCharacter();
 			highlightRGB = (currentCharacter != null && currentCharacter.canSummonAt(hoveredRowCol))
 				? [255, 255, 255]
@@ -340,7 +343,7 @@ class Level {
 				, this.tileSize - 1, this.tileSize - 1
 				, highlightRGB[0], highlightRGB[1], highlightRGB[2], 128
 				);
-			this.drawNumber(this.summonTime, this.mousePosition[0], this.mousePosition[1]);
+			this.drawNumber(this.summonTime, this.mousePosition);
 		}
 	}
 }

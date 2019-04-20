@@ -6,13 +6,13 @@ class Object {
 	// The level this object is in.
 	field level;
 	// Row-column position.
-	field position;
+	field rowCol;
 	// Used for pushing.
 	field momentum = 0;
 
-	constructor(level, position) {
+	constructor(level, rowCol) {
 		this.level = level;
-		this.position = position;
+		this.rowCol = rowCol;
 	}
 
 	// Pushes this object towards "direction", along with anything in the way, if "strength" >= # of objects to push.
@@ -21,7 +21,7 @@ class Object {
 		if (this.momentum == 0) return false;
 
 		// Get neighboring position.
-		neighborPosition = this.level.neighbor(this.position, direction);
+		neighborPosition = this.level.neighbor(this.rowCol, direction);
 
 		// Push neighbor, if any.
 		neighbor = this.level.objects[neighborPosition[0]][neighborPosition[1]];
@@ -34,7 +34,7 @@ class Object {
 		}
 
 		// Try to push this.
-		currentTile = this.level.tiles[this.position[0]][this.position[1]];
+		currentTile = this.level.tiles[this.rowCol[0]][this.rowCol[1]];
 		neighborTile = this.level.tiles[neighborPosition[0]][neighborPosition[1]];
 		if (neighborTile.acceptFrom(this, direction)) {
 			currentTile.evictTowards(this, direction);
@@ -45,8 +45,8 @@ class Object {
 	}
 
 	function enterFloor(floor, direction) {
-		this.level.objects[floor.position[0]][floor.position[1]] = this;
-		this.position = floor.position;
+		this.level.objects[floor.rowCol[0]][floor.rowCol[1]] = this;
+		this.rowCol = floor.rowCol;
 		return true;
 	}
 
@@ -55,8 +55,8 @@ class Object {
 	}
 
 	function enterIce(floor, direction) {
-		this.level.objects[floor.position[0]][floor.position[1]] = this;
-		this.position = floor.position;
+		this.level.objects[floor.rowCol[0]][floor.rowCol[1]] = this;
+		this.rowCol = floor.rowCol;
 		if (direction != null) {
 			this.push(direction);
 		}
@@ -64,64 +64,62 @@ class Object {
 	}
 
 	function enterStairs(floor, direction) {
-		this.level.objects[floor.position[0]][floor.position[1]] = this;
-		this.position = floor.position;
+		this.level.objects[floor.rowCol[0]][floor.rowCol[1]] = this;
+		this.rowCol = floor.rowCol;
 		return true;
 	}
 
 	function enterElectricFloor(floor, direction) {
-		this.level.objects[floor.position[0]][floor.position[1]] = this;
-		this.position = floor.position;
+		this.level.objects[floor.rowCol[0]][floor.rowCol[1]] = this;
+		this.rowCol = floor.rowCol;
 		return true;
 	}
 }
 
 // A pushable crate.
 class Crate : Object {
-	constructor(level, position) : base(level, position) {}
+	constructor(level, rowCol) : base(level, rowCol) {}
 
 	function draw() {
-		xy = this.level.rowColToXY(this.position[0], this.position[1]);
-		this.level.drawTile(Images.get("images/crate.png"), xy[0], xy[1]);
+		this.level.drawTile(Images.get("images/crate.png"), this.rowCol);
 	}
 
 	function enterHole(hole, direction) {
-		this.level.tiles[hole.position[0]][hole.position[1]] = new SunkenCrate(this.level, hole.position);
+		this.level.tiles[hole.rowCol[0]][hole.rowCol[1]] = new SunkenCrate(this.level, hole.rowCol);
 		return true;
 	}
 }
 
 // A pushable, slidable block of ice.
 class IceBlock : Object {
-	constructor(level, position) : base(level, position) {}
+	constructor(level, rowCol) : base(level, rowCol) {}
 
 	function draw() {
-		xy = this.level.rowColToXY(this.position[0], this.position[1]);
-		this.level.drawTile(Images.get("images/ice-block.png"), xy[0], xy[1]);
+		this.level.drawTile(Images.get("images/ice-block.png"), this.rowCol);
 	}
 
 	function enterFloor(floor, direction) {
-		this.level.objects[floor.position[0]][floor.position[1]] = this;
-		this.position = floor.position;
+		this.level.objects[floor.rowCol[0]][floor.rowCol[1]] = this;
+		this.rowCol = floor.rowCol;
 		this.push(direction);
 		return true;
 	}
 
 	function enterIce(ice, direction) {
-		this.level.objects[ice.position[0]][ice.position[1]] = this;
-		this.position = ice.position;
+		this.level.objects[ice.rowCol[0]][ice.rowCol[1]] = this;
+		this.rowCol = ice.rowCol;
 		this.push(direction);
 		return true;
 	}
 
 	function enterHole(hole, direction) {
-		this.level.tiles[hole.position[0]][hole.position[1]] = new Ice(this.level, hole.position);
+		this.level.tiles[hole.rowCol[0]][hole.rowCol[1]] = new Ice(this.level, hole.rowCol);
 		return true;
 	}
 
 	function enterElectricFloor(electricFloor, direction) {
-		this.level.objects[electricFloor.position[0]][electricFloor.position[1]] = this;
-		this.position = electricFloor.position;
+		this.level.objects[electricFloor.rowCol[0]][electricFloor.rowCol[1]] = this;
+		this.rowCol = electricFloor.rowCol;
 		this.push(direction);
 		return true;
 	}

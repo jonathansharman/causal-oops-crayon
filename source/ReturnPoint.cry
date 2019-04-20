@@ -9,7 +9,7 @@ class ReturnPoint {
 	// The level this object is in.
 	field level;
 	// Row-column position.
-	field position;
+	field rowCol;
 	// Time until the return should occur.
 	field time;
 	// The character that needs to return to this point.
@@ -17,9 +17,9 @@ class ReturnPoint {
 	// Whether the return has occurred.
 	field satisfied = false;
 
-	constructor(level, position, time, character) {
+	constructor(level, rowCol, time, character) {
 		this.level = level;
-		this.position = position;
+		this.rowCol = rowCol;
 		this.time = time;
 		this.character = character;
 	}
@@ -27,7 +27,7 @@ class ReturnPoint {
 	function update() {
 		--this.time;
 		if (this.time == 0) {
-			if (this.character.inLevel && this.character.position[0] == this.position[0] && this.character.position[1] == this.position[1]) {
+			if (this.character.inLevel && this.character.rowCol[0] == this.rowCol[0] && this.character.rowCol[1] == this.rowCol[1]) {
 				this.character.removeFromLevel();
 				--this.level.characterCount;
 				this.satisfied = true;
@@ -39,22 +39,23 @@ class ReturnPoint {
 	}
 
 	function draw() {
-		xy = this.level.rowColToXY(this.position[0], this.position[1]);
-		xyCharacter = this.level.rowColToXY(this.character.position[0], this.character.position[1]);
+		characterTopLeft = this.level.rowColToXY(this.character.rowCol);
 		// Draw triangle from character to return point, if not at same position.
-		x = xyCharacter[0] + this.level.tileSize / 2.0;
-		y = xyCharacter[1] + this.level.tileSize / 2.0;
-		if (this.character.position[0] != this.position[0] || this.character.position[1] != this.position[1]) {
+		x = characterTopLeft[0] + this.level.tileSize / 2.0;
+		y = characterTopLeft[1] + this.level.tileSize / 2.0;
+		if (this.character.rowCol[0] != this.rowCol[0] || this.character.rowCol[1] != this.rowCol[1]) {
 			theta = Math.arctan
-				( this.character.position[0] - this.position[0]
-				, this.character.position[1] - this.position[1]
+				( this.character.rowCol[0] - this.rowCol[0]
+				, this.character.rowCol[1] - this.rowCol[1]
 				);
 			theta1 = theta + Math.PI / 2.0;
 			theta2 = theta - Math.PI / 2.0;
 			offset = this.level.tileSize * RETURN_POINT_TILE_OFFSET;
 			p1 = [x + Math.cos(theta1) * offset, y + Math.sin(theta1) * offset];
 			p2 = [x + Math.cos(theta2) * offset, y + Math.sin(theta2) * offset];
-			p3 = [xy[0] + this.level.tileSize / 2.0, xy[1] + this.level.tileSize / 2.0];
+			//xy = this.level.rowColToXY(this.rowCol);
+			//p3 = [xy[0] + this.level.tileSize / 2.0, xy[1] + this.level.tileSize / 2.0];
+			p3 = this.level.rowColToXY([this.rowCol[0] + 0.5, this.rowCol[1] + 0.5]);
 			Graphics2D.Draw.triangle
 				( p1[0], p1[1]
 				, p2[0], p2[1]
@@ -75,6 +76,10 @@ class ReturnPoint {
 				);
 		}
 		// Draw time.
-		this.level.drawNumber(this.time, xyCharacter[0] + this.level.tileSize, xyCharacter[1] + this.level.tileSize);
+		characterBottomRight =
+			[ characterTopLeft[0] + this.level.tileSize
+			, characterTopLeft[1] + this.level.tileSize
+			];
+		this.level.drawNumber(this.time, characterBottomRight);
 	}
 }
