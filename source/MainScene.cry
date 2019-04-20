@@ -13,22 +13,22 @@ class MainScene : AbstractScene {
 	static function getLevel(levelIdx) {
 		switch (levelIdx) {
 			case 0:
-				return new Level("levels/1.txt");
+				return new Level("levels/free-the-prisoner.txt");
 				break;
 			case 1:
-				return new Level("levels/2.txt");
+				return new Level("levels/bridge-the-gap.txt");
 				break;
 			case 2:
-				return new Level("levels/3.txt");
+				return new Level("levels/diodes.txt");
 				break;
 			case 3:
-				return new Level("levels/4.txt");
+				return new Level("levels/hockey.txt");
 				break;
 			case 4:
-				return new Level("levels/5.txt");
+				return new Level("levels/ice-rink.txt");
 				break;
 			case 5:
-				return new Level("levels/6.txt");
+				return new Level("levels/ice-switches.txt");
 				break;
 			default:
 				return new Level("levels/test-1.txt");
