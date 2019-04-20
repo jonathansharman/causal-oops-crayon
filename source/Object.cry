@@ -7,6 +7,8 @@ class Object {
 	field level;
 	// Row-column position.
 	field position;
+	// Used for pushing.
+	field momentum = 0;
 
 	constructor(level, position) {
 		this.level = level;
@@ -14,18 +16,21 @@ class Object {
 	}
 
 	// Pushes this object towards "direction", along with anything in the way, if "strength" >= # of objects to push.
-	function push(direction, strength = 2) {
-		// Can't push anything with zero strength.
-		if (strength == 0) return false;
+	function push(direction) {
+		// Can't push without momentum.
+		if (this.momentum == 0) return false;
 
 		// Get neighboring position.
 		neighborPosition = this.level.neighbor(this.position, direction);
 
 		// Push neighbor, if any.
 		neighbor = this.level.objects[neighborPosition[0]][neighborPosition[1]];
-		if (neighbor != null && !neighbor.push(direction, strength - 1)) {
-			// Too much stuff in the way.
-			return false;
+		if (neighbor != null) {
+			neighbor.momentum = this.momentum - 1;
+			if (!neighbor.push(direction)) {
+				// Too much stuff in the way.
+				return false;
+			}
 		}
 
 		// Try to push this.
@@ -98,14 +103,14 @@ class IceBlock : Object {
 	function enterFloor(floor, direction) {
 		this.level.objects[floor.position[0]][floor.position[1]] = this;
 		this.position = floor.position;
-		this.push(direction, 1);
+		this.push(direction);
 		return true;
 	}
 
 	function enterIce(ice, direction) {
 		this.level.objects[ice.position[0]][ice.position[1]] = this;
 		this.position = ice.position;
-		this.push(direction, 1);
+		this.push(direction);
 		return true;
 	}
 
@@ -117,7 +122,7 @@ class IceBlock : Object {
 	function enterElectricFloor(electricFloor, direction) {
 		this.level.objects[electricFloor.position[0]][electricFloor.position[1]] = this;
 		this.position = electricFloor.position;
-		this.push(direction, 1);
+		this.push(direction);
 		return true;
 	}
 }

@@ -269,11 +269,14 @@ class Level {
 					if (direction != null) {
 						// Try to push the current character.
 						currentCharacter = this.getCurrentCharacter();
-						if (currentCharacter != null && currentCharacter.push(direction)) {
-							// If the character moved, advance time.
-							this.advanceTime();
-							// Update character's direction.
-							currentCharacter.direction = direction;
+						if (currentCharacter != null) {
+							currentCharacter.momentum = 2;
+							if (currentCharacter.push(direction)) {
+								// If the character moved, advance time.
+								this.advanceTime();
+								// Update character's direction.
+								currentCharacter.direction = direction;
+							}
 						}
 					}
 				}
