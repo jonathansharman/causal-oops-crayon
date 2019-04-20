@@ -2,6 +2,8 @@ import Graphics2D;
 import Math;
 import TwoCansAlpha4;
 
+const RETURN_POINT_TILE_OFFSET = 0.5;
+
 // A point from which a character emerged from the future.
 class ReturnPoint {
 	// The level this object is in.
@@ -40,18 +42,36 @@ class ReturnPoint {
 		xy = this.level.rowColToXY(this.position[0], this.position[1]);
 		xyCharacter = this.level.rowColToXY(this.character.position[0], this.character.position[1]);
 		// Draw triangle from character to return point, if not at same position.
+		x = xyCharacter[0] + this.level.tileSize / 2.0;
+		y = xyCharacter[1] + this.level.tileSize / 2.0;
 		if (this.character.position[0] != this.position[0] || this.character.position[1] != this.position[1]) {
-			angle = Math.arctan
+			theta = Math.arctan
 				( this.character.position[0] - this.position[0]
 				, this.character.position[1] - this.position[1]
 				);
+			theta1 = theta + Math.PI / 2.0;
+			theta2 = theta - Math.PI / 2.0;
+			offset = this.level.tileSize * RETURN_POINT_TILE_OFFSET;
+			p1 = [x + Math.cos(theta1) * offset, y + Math.sin(theta1) * offset];
+			p2 = [x + Math.cos(theta2) * offset, y + Math.sin(theta2) * offset];
+			p3 = [xy[0] + this.level.tileSize / 2.0, xy[1] + this.level.tileSize / 2.0];
 			Graphics2D.Draw.triangle
-				( xyCharacter[0] + this.level.tileSize / 2.0 * (1.0 + Math.cos(angle + Math.PI / 4.0))
-				, xyCharacter[1] + this.level.tileSize / 2.0 * (1.0 + Math.sin(angle + Math.PI / 4.0))
-				, xyCharacter[0] + this.level.tileSize / 2.0 * (1.0 + Math.cos(angle - Math.PI / 4.0))
-				, xyCharacter[1] + this.level.tileSize / 2.0 * (1.0 + Math.sin(angle - Math.PI / 4.0))
-				, xy[0] + this.level.tileSize / 2.0, xy[1] + this.level.tileSize / 2.0
-				, 0, 0, 0, 64
+				( p1[0], p1[1]
+				, p2[0], p2[1]
+				, p3[0], p3[1]
+				, 255, 255, 255, 64
+				);
+			Graphics2D.Draw.line
+				( p1[0], p1[1]
+				, p3[0], p3[1]
+				, this.level.zoom
+				, 0, 0, 0
+				);
+			Graphics2D.Draw.line
+				( p2[0], p2[1]
+				, p3[0], p3[1]
+				, this.level.zoom
+				, 0, 0, 0
 				);
 		}
 		// Draw time.

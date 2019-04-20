@@ -89,7 +89,7 @@ class Stairs : Tile {
 
 	function draw() {
 		xy = this.level.rowColToXY(this.position[0], this.position[1]);
-		this.level.drawTile(Images.get("images/stairs.png"), xy[0], xy[1]);
+		this.level.drawTile(Images.get("images/stairs.png"), xy[0], xy[1] - 9);
 	}
 
 	function acceptFrom(object, direction) {
@@ -110,7 +110,32 @@ class Door : Tile {
 
 	function draw() {
 		xy = this.level.rowColToXY(this.position[0], this.position[1]);
-		image = this.open() ? Images.get("images/floor.png") : Images.get("images/wall.png");
+		if (this.open()) {
+			this.level.drawTile(Images.get("images/floor.png"), xy[0], xy[1]);
+			switch (this.idx) {
+				case 0:
+					image = Images.get("images/door-open-red.png");
+					break;
+				case 1:
+					image = Images.get("images/door-open-green.png");
+					break;
+				case 2:
+					image = Images.get("images/door-open-blue.png");
+					break;
+			}
+		} else {
+			switch (this.idx) {
+				case 0:
+					image = Images.get("images/door-closed-red.png");
+					break;
+				case 1:
+					image = Images.get("images/door-closed-green.png");
+					break;
+				case 2:
+					image = Images.get("images/door-closed-blue.png");
+					break;
+			}
+		}
 		this.level.drawTile(image, xy[0], xy[1]);
 	}
 
@@ -139,21 +164,16 @@ class PressureSwitch : Tile {
 		button_size = this.level.tileSize / 2.0;
 		switch (this.doorIdx) {
 			case 0:
-				color = [255, 0, 0];
+				image = Images.get("images/pressure-switch-red.png");
 				break;
 			case 1:
-				color = [0, 255, 0];
+				image = Images.get("images/pressure-switch-green.png");
 				break;
 			case 2:
-				color = [0, 0, 255];
+				image = Images.get("images/pressure-switch-blue.png");
 				break;
 		}
-		Graphics2D.Draw.ellipse
-			( xy[0] + (this.level.tileSize - button_size + 1.0) / 2.0
-			, xy[1] + (this.level.tileSize - button_size + 1.0) / 2.0
-			, button_size, button_size
-			, color[0], color[1], color[2]
-			);
+		this.level.drawTile(image, xy[0], xy[1]);
 	}
 
 	function acceptFrom(object, direction) {
@@ -186,5 +206,18 @@ class TrappedCharacter : Floor {
 	function draw() {
 		xy = this.level.rowColToXY(this.position[0], this.position[1]);
 		this.level.drawTile(Images.get("images/trapped-character.png"), xy[0], xy[1]);
+	}
+}
+
+class ElectricFloor : Tile {
+	constructor(level, position) : base(level, position) {}
+
+	function draw() {
+		xy = this.level.rowColToXY(this.position[0], this.position[1]);
+		this.level.drawTile(Images.get("images/electric-floor.png"), xy[0], xy[1]);
+	}
+
+	function acceptFrom(object, direction) {
+		return object.enterElectricFloor(this, direction);
 	}
 }

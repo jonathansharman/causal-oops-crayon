@@ -76,6 +76,9 @@ class Level {
 				case "O":
 					this.tiles[row].add(new Hole(this, [row, col]));
 					break;
+				case "Z":
+					this.tiles[row].add(new ElectricFloor(this, [row, col]));
+					break;
 				case "r":
 					this.tiles[row].add(new PressureSwitch(0, this, [row, col]));
 					++this.doors[0];
