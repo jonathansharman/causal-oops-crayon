@@ -339,8 +339,8 @@ class Level {
 				: [255, 96, 96]
 				;
 			Graphics2D.Draw.rectangle
-				( highlightXY[0] + 1, highlightXY[1] + 1
-				, this.tileSize - 1, this.tileSize - 1
+				( highlightXY[0] + this.zoom, highlightXY[1] + this.zoom
+				, this.tileSize - this.zoom, this.tileSize - this.zoom
 				, highlightRGB[0], highlightRGB[1], highlightRGB[2], 128
 				);
 			this.drawNumber(this.summonTime, this.mousePosition);
