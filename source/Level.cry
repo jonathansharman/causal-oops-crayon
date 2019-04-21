@@ -247,10 +247,8 @@ class Level {
 									}
 								}
 								// Fast forward if the character is in position.
-								retPt = this.returnPoints[idx];
-								retChar = retPt.character;
-								if (retPt.rowCol[0] == retChar.rowCol[0] && retPt.rowCol[1] == retChar.rowCol[1]) {
-									time = retPt.time;
+								if (this.returnPoints[idx].ready()) {
+									time = this.returnPoints[idx].time;
 									for (i = 0; i < time; ++i) {
 										this.advanceTime();
 										if (!this.consistent) {
@@ -314,15 +312,19 @@ class Level {
 	}
 
 	// Draws a number to the upper-left of (x, y).
-	function drawNumber(n, xy) {
-		xyCopy = xy.clone();
+	function drawNumber(n, xy, color = [255, 255, 255]) {
+		x = xy[0];
+		y_bottom = xy[1];
 		while (n > 0) {
 			digit = n % 10;
 			n /= 10;
 			image = Images.get("images/" + digit + ".png");
-			xyCopy[0] -= image.width * this.zoom;
-			y_top = xyCopy[1] - image.height * this.zoom;
-			image.drawStretched(xyCopy[0], y_top, image.width * this.zoom, image.height * this.zoom);
+			x -= image.width * this.zoom;
+			y = y_bottom - image.height * this.zoom;
+			width = image.width * this.zoom;
+			height = image.height * this.zoom;
+			Graphics2D.Draw.rectangle(x, y, width, height, color[0], color[1], color[2]);
+			image.drawStretched(x, y, width, height);
 		}
 	}
 

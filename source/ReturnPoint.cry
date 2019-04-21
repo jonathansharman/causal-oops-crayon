@@ -24,10 +24,17 @@ class ReturnPoint {
 		this.character = character;
 	}
 
+	// Whether the returning character is still in the level and at the correct position.
+	function ready() {
+		return this.character.inLevel
+			&& this.character.rowCol[0] == this.rowCol[0]
+			&& this.character.rowCol[1] == this.rowCol[1];
+	}
+
 	function update() {
 		--this.time;
 		if (this.time == 0) {
-			if (this.character.inLevel && this.character.rowCol[0] == this.rowCol[0] && this.character.rowCol[1] == this.rowCol[1]) {
+			if (this.ready()) {
 				this.character.removeFromLevel();
 				--this.level.characterCount;
 				this.satisfied = true;
@@ -43,7 +50,8 @@ class ReturnPoint {
 		// Draw triangle from character to return point, if not at same position.
 		x = characterTopLeft[0] + this.level.tileSize / 2.0;
 		y = characterTopLeft[1] + this.level.tileSize / 2.0;
-		if (this.character.rowCol[0] != this.rowCol[0] || this.character.rowCol[1] != this.rowCol[1]) {
+		ready = this.ready();
+		if (!ready) {
 			theta = Math.arctan
 				( this.character.rowCol[0] - this.rowCol[0]
 				, this.character.rowCol[1] - this.rowCol[1]
@@ -80,6 +88,7 @@ class ReturnPoint {
 			[ characterTopLeft[0] + this.level.tileSize
 			, characterTopLeft[1] + this.level.tileSize
 			];
-		this.level.drawNumber(this.time, characterBottomRight);
+		color = ready ? [0, 255, 0] : [255, 255, 255];
+		this.level.drawNumber(this.time, characterBottomRight, color);
 	}
 }

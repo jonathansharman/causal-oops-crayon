@@ -64,9 +64,7 @@ class Object {
 	}
 
 	function enterStairs(floor, direction) {
-		this.level.objects[floor.rowCol[0]][floor.rowCol[1]] = this;
-		this.rowCol = floor.rowCol;
-		return true;
+		return false;
 	}
 
 	function enterElectricFloor(floor, direction) {
