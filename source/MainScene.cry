@@ -7,38 +7,23 @@ const Y_RES = 480;
 enum Direction { UP, DOWN, LEFT, RIGHT }
 
 class MainScene : AbstractScene {
+	static field levelNames =
+		[ "free-the-prisoner"
+		, "bridge-the-gap"
+		, "diodes"
+		, "hockey"
+		, "ice-rink"
+		, "ice-switches"
+		, "four-holes"
+		, "test-1"
+		];
+
 	field levelIdx;
 	field level;
 
-	static function getLevel(levelIdx) {
-		switch (levelIdx) {
-			case 0:
-				return new Level("levels/free-the-prisoner.txt");
-				break;
-			case 1:
-				return new Level("levels/bridge-the-gap.txt");
-				break;
-			case 2:
-				return new Level("levels/diodes.txt");
-				break;
-			case 3:
-				return new Level("levels/hockey.txt");
-				break;
-			case 4:
-				return new Level("levels/ice-rink.txt");
-				break;
-			case 5:
-				return new Level("levels/ice-switches.txt");
-				break;
-			default:
-				return new Level("levels/test-1.txt");
-				break;
-		}
-	}
-
 	constructor(levelIdx = 0) : base() {
-		this.levelIdx = levelIdx;
-		this.level = MainScene.getLevel(this.levelIdx);
+		this.levelIdx = levelIdx % MainScene.levelNames.length;
+		this.level = new Level("levels/" + MainScene.levelNames[this.levelIdx] + ".txt");
 	}
 
 	function update(inputManager, events) {

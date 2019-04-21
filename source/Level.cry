@@ -9,7 +9,7 @@ const MAX_COL_COUNT = X_RES / MIN_TILE_SIZE;
 const MAX_ROW_COUNT = Y_RES / MIN_TILE_SIZE;
 
 const MIN_SUMMON_TIME = 1;
-const DFLT_SUMMON_TIME = 20;
+const DFLT_SUMMON_TIME = 99;
 const MAX_SUMMON_TIME = 99;
 const SUMMON_TIME_STEP = 10;
 
@@ -222,10 +222,6 @@ class Level {
 				}
 			}
 		} else {
-			if (inputManager.isKeyPressed(KeyboardKey.ENTER)) {
-				// Fast forward.
-				this.advanceTime();
-			}
 			for (e : events) {
 				if (e.type == EventType.MOUSE_PRESS) {
 					// Switch to clicked character, if any.
@@ -240,6 +236,34 @@ class Level {
 				} else if (e.type == EventType.KEY && e.down) {
 					direction = null;
 					switch (e.key) {
+						case KeyboardKey.SPACE:
+							// Try to wait until a character returns to the past.
+							if (this.returnPoints.length != 0) {
+								// Find the return point that will trigger next.
+								idx = 0;
+								for (i = 1; i < this.returnPoints.length; ++i) {
+									if (this.returnPoints[i].time < this.returnPoints[idx].time) {
+										idx = i;
+									}
+								}
+								// Fast forward if the character is in position.
+								retPt = this.returnPoints[idx];
+								retChar = retPt.character;
+								if (retPt.rowCol[0] == retChar.rowCol[0] && retPt.rowCol[1] == retChar.rowCol[1]) {
+									time = retPt.time;
+									for (i = 0; i < time; ++i) {
+										this.advanceTime();
+										if (!this.consistent) {
+											return;
+										}
+									}
+								}
+							}
+							break;
+						case KeyboardKey.Z:
+							// Wait one turn.
+							this.advanceTime();
+							break;
 						case KeyboardKey.Q:
 							// Previous character.
 							--this.characterIdx;
@@ -247,10 +271,6 @@ class Level {
 						case KeyboardKey.E:
 							// Next character.
 							++this.characterIdx;
-							break;
-						case KeyboardKey.SPACE:
-							// Wait one turn.
-							this.advanceTime();
 							break;
 						// Movement commands.
 						case KeyboardKey.UP:    direction = Direction.UP;    break;
