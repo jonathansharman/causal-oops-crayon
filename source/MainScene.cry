@@ -11,10 +11,10 @@ class MainScene : AbstractScene {
 		[ "free-the-prisoner"
 		, "bridge-the-gap"
 		, "diodes"
+		, "four-holes"
 		, "hockey"
 		, "ice-rink"
 		, "ice-switches"
-		, "four-holes"
 		, "test-1"
 		];
 
