@@ -15,6 +15,7 @@ class MainScene : AbstractScene {
 		, "hockey"
 		, "ice-rink"
 		, "ice-switches"
+		, "electric-ice"
 		, "test-1"
 		];
 
