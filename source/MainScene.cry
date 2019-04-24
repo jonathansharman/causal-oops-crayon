@@ -12,10 +12,12 @@ class MainScene : AbstractScene {
 		, "bridge-the-gap"
 		, "diodes"
 		, "four-holes"
+		, "small-ice-rink"
 		, "hockey"
 		, "ice-rink"
 		, "ice-switches"
 		, "electric-ice"
+		, "test-4"
 		, "test-1"
 		];
 
