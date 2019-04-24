@@ -18,7 +18,7 @@ class Tile {
 	}
 
 	function isValidSummonTarget() {
-		return true;
+		return false;
 	}
 }
 
@@ -32,6 +32,10 @@ class Floor : Tile {
 	function acceptFrom(object, direction) {
 		return object.enterFloor(this, direction);
 	}
+
+	function isValidSummonTarget() {
+		return true;
+	}
 }
 
 class Wall : Tile {
@@ -43,10 +47,6 @@ class Wall : Tile {
 
 	function acceptFrom(object, direction) {
 		return object.enterWall(this, direction);
-	}
-
-	function isValidSummonTarget() {
-		return false;
 	}
 }
 
@@ -65,6 +65,10 @@ class Ice : Tile {
 
 	function acceptFrom(object, direction) {
 		return object.enterIce(this, direction);
+	}
+
+	function isValidSummonTarget() {
+		return true;
 	}
 }
 
@@ -183,6 +187,10 @@ class PressureSwitch : Tile {
 		++this.level.doors[this.doorIdx];
 		this.level.objects[this.rowCol[0]][this.rowCol[1]] = null;
 	}
+
+	function isValidSummonTarget() {
+		return true;
+	}
 }
 
 class SunkenCrate : Floor {
@@ -210,5 +218,9 @@ class ElectricFloor : Tile {
 
 	function acceptFrom(object, direction) {
 		return object.enterElectricFloor(this, direction);
+	}
+
+	function isValidSummonTarget() {
+		return false;
 	}
 }
