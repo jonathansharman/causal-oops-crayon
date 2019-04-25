@@ -2,7 +2,7 @@
 	"default-title": "Causal Oops",
 	"id": "CausalOops",
 	"description": "Sokoban-style game based on the concept of causal loops.",
-	"icon": "assets/icon32.png,assets/icon256.png",
+	"icons": ["assets/icon32.png", "assets/icon256.png"],
 
 	"deps": [
 		"%TWOCANS_SDK%/TwoCansAlpha4"

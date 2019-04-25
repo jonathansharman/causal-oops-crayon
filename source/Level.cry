@@ -40,7 +40,8 @@ class Level {
 
 	field summoning = false;
 	field summonTime = DFLT_SUMMON_TIME;
-	field mousePosition;
+	field summonMouseXY;
+	field summonKeyboardXY = null;
 
 	// Loads the level from file.
 	constructor(filename) {
@@ -133,12 +134,15 @@ class Level {
 			++idx;
 			++col;
 		}
+
 		minWidth = this.colCount * MIN_TILE_SIZE;
 		minHeight = this.rowCount * MIN_TILE_SIZE;
 		this.zoom = Math.max(1, Math.min(Math.floor(1.0 * X_RES / minWidth), Math.floor(1.0 * Y_RES / minHeight)));
 		this.tileSize = MIN_TILE_SIZE * this.zoom;
 		this.xMargin = (X_RES - this.colCount * this.tileSize) / 2;
 		this.yMargin = (Y_RES - this.rowCount * this.tileSize) / 2;
+
+		this.resetSummonKeyboardXY();
 	}
 
 	// Gets the currently selected character or null if there are no characters left.
@@ -193,109 +197,197 @@ class Level {
 		return [(xy[1] - this.yMargin) / this.tileSize, (xy[0] - this.xMargin) / this.tileSize];
 	}
 
+	// Attempts to summon the current character at the currently selected position.
+	function summonCurrentCharacter() {
+		currentCharacter = this.getCurrentCharacter();
+		if (currentCharacter != null) {
+			summonXY = this.summonKeyboardXY != null ? this.summonKeyboardXY : this.summonMouseXY;
+			currentCharacter.summonFromFuture(this.xyToRowCol(summonXY), this.summonTime);
+		}
+	}
+
+	// Tries to move the current character in the given direction.
+	function moveCurrentCharacter(direction) {
+		currentCharacter = this.getCurrentCharacter();
+		if (currentCharacter != null) {
+			// Set direction. This allows the direction to change even if the character fails to move.
+			currentCharacter.direction = direction;
+			// Try to push.
+			currentCharacter.momentum = 2;
+			if (currentCharacter.push(direction)) {
+				// If the character moved, advance time.
+				this.advanceTime();
+				// Reset direction since advancing time causes all characters to face down.
+				currentCharacter.direction = direction;
+			}
+		}
+	}
+
+	// Sets/resets the keyboard-controlled summon target to the current character.
+	function resetSummonKeyboardXY() {
+		currentCharacter = this.getCurrentCharacter();
+		if (currentCharacter != null) {
+			this.summonKeyboardXY = this.rowColToXY(currentCharacter.rowCol);
+			this.summonKeyboardXY[0] += this.tileSize / 2;
+			this.summonKeyboardXY[1] += this.tileSize / 2;
+		} else {
+			this.summonKeyboardXY = null;
+		}
+	}
+
+	// Moves the summon target in the given direction.
+	function moveSummonKeyboardXY(direction) {
+		if (this.summonKeyboardXY == null) {
+			this.resetSummonKeyboardXY();
+		}
+		switch (direction) {
+			case Direction.UP:
+				this.summonKeyboardXY[1] -= this.tileSize;
+				break;
+			case Direction.DOWN:
+				this.summonKeyboardXY[1] += this.tileSize;
+				break;
+			case Direction.LEFT:
+				this.summonKeyboardXY[0] -= this.tileSize;
+				break;
+			case Direction.RIGHT:
+				this.summonKeyboardXY[0] += this.tileSize;
+				break;
+		}
+	}
+
 	// Updates the level.
 	function update(inputManager, events) {
-		this.mousePosition = inputManager.getMousePosition();
 		this.summoning = inputManager.isShiftPressed();
-		if (this.summoning) {
-			for (e : events) {
-				if (e.type == EventType.MOUSE_PRESS) {
-					// Summon.
-					currentCharacter = this.getCurrentCharacter();
-					if (currentCharacter != null) {
-						currentCharacter.summonFromFuture(this.xyToRowCol([e.x, e.y]), this.summonTime);
-					}
-				} else if (e.type == EventType.KEY && e.down) {
-					switch (e.key) {
-						case KeyboardKey.UP:    ++this.summonTime;                   break;
-						case KeyboardKey.DOWN:  --this.summonTime;                   break;
-						case KeyboardKey.LEFT:  this.summonTime -= SUMMON_TIME_STEP; break;
-						case KeyboardKey.RIGHT: this.summonTime += SUMMON_TIME_STEP; break;
-						case KeyboardKey.W:     ++this.summonTime;                   break;
-						case KeyboardKey.S:     --this.summonTime;                   break;
-						case KeyboardKey.A:     this.summonTime -= SUMMON_TIME_STEP; break;
-						case KeyboardKey.D:     this.summonTime += SUMMON_TIME_STEP; break;
-						default:
-							break;
-					}
-					this.summonTime = Math.max(MIN_SUMMON_TIME, Math.min(MAX_SUMMON_TIME, this.summonTime));
-				}
-			}
-		} else {
-			for (e : events) {
-				if (e.type == EventType.MOUSE_PRESS) {
-					// Switch to clicked character, if any.
-					clickedPosition = this.xyToRowCol(this.mousePosition);
-					for (i = 0; i < this.characters.length; ++i) {
-						characterPosition = this.characters[i].rowCol;
-						if (characterPosition[0] == clickedPosition[0] && characterPosition[1] == clickedPosition[1]) {
-							this.characterIdx = i;
-							break;
+		if (!this.summoning) {
+			this.summonKeyboardXY = null;
+		}
+
+		this.summonMouseXY = inputManager.getMousePosition();
+		for (e : events) {
+			switch (e.type) {
+				case EventType.MOUSE_PRESS:
+					if (this.summoning) {
+						this.summonCurrentCharacter();
+					} else {
+						// Switch to clicked character, if any.
+						clickedPosition = this.xyToRowCol([e.x, e.y]);
+						for (i = 0; i < this.characters.length; ++i) {
+							characterPosition = this.characters[i].rowCol;
+							if (characterPosition[0] == clickedPosition[0] && characterPosition[1] == clickedPosition[1]) {
+								this.characterIdx = i;
+								break;
+							}
 						}
 					}
-				} else if (e.type == EventType.KEY && e.down) {
-					direction = null;
-					switch (e.key) {
-						case KeyboardKey.SPACE:
-							// Try to wait until a character returns to the past.
-							if (this.returnPoints.length != 0) {
-								// Find the return point that will trigger next.
-								idx = 0;
-								for (i = 1; i < this.returnPoints.length; ++i) {
-									if (this.returnPoints[i].time < this.returnPoints[idx].time) {
-										idx = i;
-									}
-								}
-								// Fast forward if the character is in position.
-								if (this.returnPoints[idx].ready()) {
-									time = this.returnPoints[idx].time;
-									for (i = 0; i < time; ++i) {
-										this.advanceTime();
-										if (!this.consistent) {
-											return;
+					break;
+				case EventType.MOUSE_MOVE:
+					this.summonKeyboardXY = null;
+					break;
+				case EventType.KEY:
+					if (e.down) {
+						if (this.summoning) {
+							switch (e.key) {
+								case KeyboardKey.SPACE:
+									this.summonCurrentCharacter();
+									break;
+								// Move summon target.
+								case KeyboardKey.UP:
+									this.moveSummonKeyboardXY(Direction.UP);
+									break;
+								case KeyboardKey.DOWN:
+									this.moveSummonKeyboardXY(Direction.DOWN);
+									break;
+								case KeyboardKey.LEFT:
+									this.moveSummonKeyboardXY(Direction.LEFT);
+									break;
+								case KeyboardKey.RIGHT:
+									this.moveSummonKeyboardXY(Direction.RIGHT);
+									break;
+								case KeyboardKey.W:
+									this.moveSummonKeyboardXY(Direction.UP);
+									break;
+								case KeyboardKey.S:
+									this.moveSummonKeyboardXY(Direction.DOWN);
+									break;
+								case KeyboardKey.A:
+									this.moveSummonKeyboardXY(Direction.LEFT);
+									break;
+								case KeyboardKey.D:
+									this.moveSummonKeyboardXY(Direction.RIGHT);
+									break;
+								default:
+									break;
+							}
+						} else {
+							switch (e.key) {
+								case KeyboardKey.SPACE:
+									// Try to wait until a character returns to the past.
+									if (this.returnPoints.length != 0) {
+										// Find the return point that will trigger next.
+										idx = 0;
+										for (i = 1; i < this.returnPoints.length; ++i) {
+											if (this.returnPoints[i].time < this.returnPoints[idx].time) {
+												idx = i;
+											}
+										}
+										// Fast forward if the character is in position.
+										if (this.returnPoints[idx].ready()) {
+											time = this.returnPoints[idx].time;
+											for (i = 0; i < time; ++i) {
+												this.advanceTime();
+												if (!this.consistent) {
+													return;
+												}
+											}
 										}
 									}
-								}
-							}
-							break;
-						case KeyboardKey.Z:
-							// Wait one turn.
-							this.advanceTime();
-							break;
-						case KeyboardKey.Q:
-							// Previous character.
-							--this.characterIdx;
-							break;
-						case KeyboardKey.E:
-							// Next character.
-							++this.characterIdx;
-							break;
-						// Movement commands.
-						case KeyboardKey.UP:    direction = Direction.UP;    break;
-						case KeyboardKey.DOWN:  direction = Direction.DOWN;  break;
-						case KeyboardKey.LEFT:  direction = Direction.LEFT;  break;
-						case KeyboardKey.RIGHT: direction = Direction.RIGHT; break;
-						case KeyboardKey.W:     direction = Direction.UP;    break;
-						case KeyboardKey.S:     direction = Direction.DOWN;  break;
-						case KeyboardKey.A:     direction = Direction.LEFT;  break;
-						case KeyboardKey.D:     direction = Direction.RIGHT; break;
-						default:
-							break;
-					}
-					if (direction != null) {
-						// Try to push the current character.
-						currentCharacter = this.getCurrentCharacter();
-						if (currentCharacter != null) {
-							currentCharacter.momentum = 2;
-							if (currentCharacter.push(direction)) {
-								// If the character moved, advance time.
-								this.advanceTime();
-								// Update character's direction.
-								currentCharacter.direction = direction;
+									break;
+								case KeyboardKey.Z:
+									// Wait one turn.
+									this.advanceTime();
+									break;
+								case KeyboardKey.Q:
+									// Previous character.
+									--this.characterIdx;
+									break;
+								case KeyboardKey.E:
+									// Next character.
+									++this.characterIdx;
+									break;
+								// Move current character.
+								case KeyboardKey.UP:
+									this.moveCurrentCharacter(Direction.UP);
+									break;
+								case KeyboardKey.DOWN:
+									this.moveCurrentCharacter(Direction.DOWN);
+									break;
+								case KeyboardKey.LEFT:
+									this.moveCurrentCharacter(Direction.LEFT);
+									break;
+								case KeyboardKey.RIGHT:
+									this.moveCurrentCharacter(Direction.RIGHT);
+									break;
+								case KeyboardKey.W:
+									this.moveCurrentCharacter(Direction.UP);
+									break;
+								case KeyboardKey.S:
+									this.moveCurrentCharacter(Direction.DOWN);
+									break;
+								case KeyboardKey.A:
+									this.moveCurrentCharacter(Direction.LEFT);
+									break;
+								case KeyboardKey.D:
+									this.moveCurrentCharacter(Direction.RIGHT);
+									break;
+								default:
+									break;
 							}
 						}
 					}
-				}
+					break;
+				default:
+					break;
 			}
 		}
 	}
@@ -353,7 +445,8 @@ class Level {
 
 		// Draw mouse hover highlight, if summoning.
 		if (this.summoning) {
-			hoveredRowCol = this.xyToRowCol(this.mousePosition);
+			summonXY = this.summonKeyboardXY != null ? this.summonKeyboardXY : this.summonMouseXY;
+			hoveredRowCol = this.xyToRowCol(summonXY);
 			highlightXY = this.rowColToXY(hoveredRowCol);
 			currentCharacter = this.getCurrentCharacter();
 			highlightRGB = (currentCharacter != null && currentCharacter.canSummonAt(hoveredRowCol))
@@ -365,7 +458,7 @@ class Level {
 				, this.tileSize - this.zoom, this.tileSize - this.zoom
 				, highlightRGB[0], highlightRGB[1], highlightRGB[2], 128
 				);
-			this.drawNumber(this.summonTime, this.mousePosition);
+			this.drawNumber(this.summonTime, summonXY);
 		}
 	}
 }
