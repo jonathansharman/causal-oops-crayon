@@ -15,6 +15,10 @@ const SUMMON_TIME_STEP = 10;
 
 // Represents a game level and its current state.
 class Level {
+	field filename;
+	field moveList = [];
+	field moveIdx = 0;
+
 	field rowCount;
 	field colCount;
 
@@ -28,31 +32,35 @@ class Level {
 	field objects;
 
 	field characters;
-	field characterIdx = 0;
-	field characterCount = 0;
+	field characterIdx;
+	field characterCount;
 
 	field returnPoints;
 
-	field doors = [0, 0, 0];
+	field doors;
 
 	// Whether the level's state is logically consistent.
-	field consistent = true;
+	field consistent;
 
 	field summoning = false;
 	field summonTime = DFLT_SUMMON_TIME;
 	field summonMouseXY;
 	field summonKeyboardXY = null;
 
-	// Loads the level from file.
-	constructor(filename) {
+	// Loads or reloads from file.
+	function loadFromFile() {
 		this.rowCount = 0;
 		this.colCount = 0;
 		this.tiles = [[]];
 		this.objects = [[]];
 		this.characters = [];
+		this.characterIdx = 0;
+		this.characterCount = 0;
 		this.returnPoints = [];
+		this.doors = [0, 0, 0];
+		this.consistent = true;
 
-		levelText = Resources.readText(filename);
+		levelText = Resources.readText(this.filename);
 		row = 0;
 		col = 0;
 		idx = 0;
@@ -145,6 +153,12 @@ class Level {
 		this.resetSummonKeyboardXY();
 	}
 
+	// Loads the level from file.
+	constructor(filename) {
+		this.filename = filename;
+		this.loadFromFile();
+	}
+
 	// Gets the currently selected character or null if there are no characters left.
 	function getCurrentCharacter() {
 		if (this.characters.length == 0) return null;
@@ -197,30 +211,9 @@ class Level {
 		return [(xy[1] - this.yMargin) / this.tileSize, (xy[0] - this.xMargin) / this.tileSize];
 	}
 
-	// Attempts to summon the current character at the currently selected position.
-	function summonCurrentCharacter() {
-		currentCharacter = this.getCurrentCharacter();
-		if (currentCharacter != null) {
-			summonXY = this.summonKeyboardXY != null ? this.summonKeyboardXY : this.summonMouseXY;
-			currentCharacter.summonFromFuture(this.xyToRowCol(summonXY), this.summonTime);
-		}
-	}
-
-	// Tries to move the current character in the given direction.
-	function moveCurrentCharacter(direction) {
-		currentCharacter = this.getCurrentCharacter();
-		if (currentCharacter != null) {
-			// Set direction. This allows the direction to change even if the character fails to move.
-			currentCharacter.direction = direction;
-			// Try to push.
-			currentCharacter.momentum = 2;
-			if (currentCharacter.push(direction)) {
-				// If the character moved, advance time.
-				this.advanceTime();
-				// Reset direction since advancing time causes all characters to face down.
-				currentCharacter.direction = direction;
-			}
-		}
+	// Gets the currently selected summoning position.
+	function getSummonXY() {
+		return this.summonKeyboardXY != null ? this.summonKeyboardXY : this.summonMouseXY;
 	}
 
 	// Sets/resets the keyboard-controlled summon target to the current character.
@@ -256,6 +249,19 @@ class Level {
 		}
 	}
 
+	// Performs the given move and adds it to the move list at the current index.
+	function doMove(move) {
+		if (this.moveIdx == this.moveList.length) {
+			this.moveList.add(move);
+			++this.moveIdx;
+		} else {
+			this.moveList[this.moveIdx] = move;
+			this.moveList = this.moveList[0:this.moveIdx];
+		}
+		move.apply(this);
+		print(this.moveIdx + "/" + this.moveList.length);
+	}
+
 	// Updates the level.
 	function update(inputManager, events) {
 		this.summoning = inputManager.isShiftPressed();
@@ -268,14 +274,14 @@ class Level {
 			switch (e.type) {
 				case EventType.MOUSE_PRESS:
 					if (this.summoning) {
-						this.summonCurrentCharacter();
+						this.doMove(new SummonCurrentCharacter(this.getSummonXY(), this.summonTime));
 					} else {
 						// Switch to clicked character, if any.
 						clickedPosition = this.xyToRowCol([e.x, e.y]);
 						for (i = 0; i < this.characters.length; ++i) {
 							characterPosition = this.characters[i].rowCol;
 							if (characterPosition[0] == clickedPosition[0] && characterPosition[1] == clickedPosition[1]) {
-								this.characterIdx = i;
+								this.doMove(new SwitchCharacter(i));
 								break;
 							}
 						}
@@ -289,7 +295,7 @@ class Level {
 						if (this.summoning) {
 							switch (e.key) {
 								case KeyboardKey.SPACE:
-									this.summonCurrentCharacter();
+									this.doMove(new SummonCurrentCharacter(this.getSummonXY(), this.summonTime));
 									break;
 								// Move summon target.
 								case KeyboardKey.UP:
@@ -321,64 +327,68 @@ class Level {
 							}
 						} else {
 							switch (e.key) {
+								case KeyboardKey.R:
+									// Undo.
+									this.loadFromFile();
+									if (this.moveIdx > 0) {
+										--this.moveIdx;
+										for (i = 0; i < this.moveIdx; ++i) {
+											this.moveList[i].apply(this);
+										}
+									}
+									print(this.moveIdx + "/" + this.moveList.length);
+									break;
+								case KeyboardKey.T:
+									// Redo.
+									if (this.moveIdx < this.moveList.length) {
+										this.moveList[this.moveIdx].apply(this);
+										++this.moveIdx;
+									}
+									print(this.moveIdx + "/" + this.moveList.length);
+									break;
 								case KeyboardKey.SPACE:
 									// Try to wait until a character returns to the past.
 									if (this.returnPoints.length != 0) {
-										// Find the return point that will trigger next.
-										idx = 0;
-										for (i = 1; i < this.returnPoints.length; ++i) {
-											if (this.returnPoints[i].time < this.returnPoints[idx].time) {
-												idx = i;
-											}
-										}
-										// Fast forward if the character is in position.
-										if (this.returnPoints[idx].ready()) {
-											time = this.returnPoints[idx].time;
-											for (i = 0; i < time; ++i) {
-												this.advanceTime();
-												if (!this.consistent) {
-													return;
-												}
-											}
-										}
+										this.doMove(new FastForward());
+										if (!this.consistent) return;
 									}
 									break;
 								case KeyboardKey.Z:
 									// Wait one turn.
-									this.advanceTime();
+									this.doMove(new Wait());
 									break;
 								case KeyboardKey.Q:
 									// Previous character.
-									--this.characterIdx;
+									this.doMove(new SwitchCharacter(this.characterIdx - 1));
 									break;
 								case KeyboardKey.E:
 									// Next character.
-									++this.characterIdx;
+									this.doMove(new SwitchCharacter(this.characterIdx + 1));
 									break;
 								// Move current character.
 								case KeyboardKey.UP:
-									this.moveCurrentCharacter(Direction.UP);
+									this.doMove(new MoveCurrentCharacter(Direction.UP));
 									break;
 								case KeyboardKey.DOWN:
-									this.moveCurrentCharacter(Direction.DOWN);
+									this.doMove(new MoveCurrentCharacter(Direction.DOWN));
 									break;
 								case KeyboardKey.LEFT:
-									this.moveCurrentCharacter(Direction.LEFT);
+									this.doMove(new MoveCurrentCharacter(Direction.LEFT));
 									break;
 								case KeyboardKey.RIGHT:
-									this.moveCurrentCharacter(Direction.RIGHT);
+									this.doMove(new MoveCurrentCharacter(Direction.RIGHT));
 									break;
 								case KeyboardKey.W:
-									this.moveCurrentCharacter(Direction.UP);
+									this.doMove(new MoveCurrentCharacter(Direction.UP));
 									break;
 								case KeyboardKey.S:
-									this.moveCurrentCharacter(Direction.DOWN);
+									this.doMove(new MoveCurrentCharacter(Direction.DOWN));
 									break;
 								case KeyboardKey.A:
-									this.moveCurrentCharacter(Direction.LEFT);
+									this.doMove(new MoveCurrentCharacter(Direction.LEFT));
 									break;
 								case KeyboardKey.D:
-									this.moveCurrentCharacter(Direction.RIGHT);
+									this.doMove(new MoveCurrentCharacter(Direction.RIGHT));
 									break;
 								default:
 									break;

@@ -25,7 +25,7 @@ class MainScene : AbstractScene {
 	field levelIdx;
 	field level;
 
-	constructor(levelIdx = 0) : base() {
+	constructor(levelIdx = 0) {
 		this.levelIdx = levelIdx % MainScene.levelNames.length;
 		this.level = new Level("levels/" + MainScene.levelNames[this.levelIdx] + ".txt");
 	}

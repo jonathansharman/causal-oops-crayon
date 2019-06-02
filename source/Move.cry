@@ -1,0 +1,73 @@
+// Switches the current character.
+class SwitchCharacter {
+	field idx;
+	constructor(idx) { this.idx = idx; }
+	function apply(level) {
+		level.characterIdx = this.idx;
+	}
+}
+
+// Tries to move the current character in the given direction.
+class MoveCurrentCharacter {
+	field direction;
+	constructor(direction) { this.direction = direction; }
+	function apply(level) {
+		currentCharacter = level.getCurrentCharacter();
+		if (currentCharacter != null) {
+			// Set direction. This allows the direction to change even if the character fails to move.
+			currentCharacter.direction = this.direction;
+			// Try to push.
+			currentCharacter.momentum = 2;
+			if (currentCharacter.push(this.direction)) {
+				// If the character moved, advance time.
+				level.advanceTime();
+				// Reset direction since advancing time causes all characters to face down.
+				currentCharacter.direction = this.direction;
+			}
+		}
+	}
+}
+
+// Attempts to summon the current character at xy.
+class SummonCurrentCharacter {
+	field xy;
+	field summonTime;
+	constructor(xy, summonTime) {
+		this.xy = xy;
+		this.summonTime = summonTime;
+	}
+	function apply(level) {
+		currentCharacter = level.getCurrentCharacter();
+		if (currentCharacter != null) {
+			currentCharacter.summonFromFuture(level.xyToRowCol(this.xy), this.summonTime);
+		}
+	}
+}
+
+// Waits one turn.
+class Wait {
+	function apply(level) {
+		level.advanceTime();
+	}
+}
+
+// Waits until a character returns to the past. Requires a return point to exist.
+class FastForward {
+	function apply(level) {
+		// Find the return point that will trigger next.
+		idx = 0;
+		for (i = 1; i < level.returnPoints.length; ++i) {
+			if (level.returnPoints[i].time < level.returnPoints[idx].time) {
+				idx = i;
+			}
+		}
+		// Fast forward if the character is in position.
+		if (level.returnPoints[idx].ready()) {
+			time = level.returnPoints[idx].time;
+			for (i = 0; i < time; ++i) {
+				level.advanceTime();
+				if (!level.consistent) return;
+			}
+		}
+	}
+}
