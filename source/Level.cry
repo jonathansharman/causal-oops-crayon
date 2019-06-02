@@ -259,7 +259,6 @@ class Level {
 			this.moveList = this.moveList[0:this.moveIdx];
 		}
 		move.apply(this);
-		print(this.moveIdx + "/" + this.moveList.length);
 	}
 
 	// Updates the level.
@@ -336,7 +335,6 @@ class Level {
 											this.moveList[i].apply(this);
 										}
 									}
-									print(this.moveIdx + "/" + this.moveList.length);
 									break;
 								case KeyboardKey.T:
 									// Redo.
@@ -344,7 +342,6 @@ class Level {
 										this.moveList[this.moveIdx].apply(this);
 										++this.moveIdx;
 									}
-									print(this.moveIdx + "/" + this.moveList.length);
 									break;
 								case KeyboardKey.SPACE:
 									// Try to wait until a character returns to the past.
