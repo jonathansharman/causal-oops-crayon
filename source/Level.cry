@@ -1,4 +1,5 @@
 import Graphics2D;
+import Graphics2DText;
 import Math;
 import Random;
 import Resources;
@@ -33,6 +34,16 @@ class Level : AbstractScene {
 		, "electric-ice"
 		, "victory"
 		];
+	static field contradictionText;
+
+	static constructor() {
+		Level.contradictionText = FontResource
+			.fromSystem('Arial')
+			.getRenderer()
+			.setColor(255, 255, 255)
+			.setSize(48)
+			.render(" ☠️ CONTRADICTION ☠️ ");
+	}
 
 	field levelIdx;
 
@@ -70,7 +81,6 @@ class Level : AbstractScene {
 
 	constructor(levelIdx = 0) {
 		this.levelIdx = levelIdx % Level.levelNames.length;
-
 		this.filename = "levels/" + Level.levelNames[this.levelIdx] + ".txt";
 		this.loadFromFile();
 	}
@@ -488,8 +498,16 @@ class Level : AbstractScene {
 			returnPoint.draw();
 		}
 
-		// Draw mouse hover highlight, if summoning.
-		if (this.summoning) {
+		if (!this.consistent) {
+			// Draw contradiction text.
+			width = Level.contradictionText.width;
+			height = Level.contradictionText.height;
+			x = (X_RES - width) / 2;
+			y = (Y_RES - height) / 2;
+			Graphics2D.Draw.rectangle(x, y, width, height, 0, 0, 0, 128);
+			Level.contradictionText.draw(x, y);
+		} else if (this.summoning) {
+			// Draw summon highlight.
 			summonXY = this.summonKeyboardXY != null ? this.summonKeyboardXY : this.summonMouseXY;
 			hoveredRowCol = this.xyToRowCol(summonXY);
 			highlightXY = this.rowColToXY(hoveredRowCol);
