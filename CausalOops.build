@@ -23,7 +23,7 @@
 
 	"vars": [
 		{ "name": "game_title", "value": "Causal Oops" },
-		{ "name": "initial_scene", "value": "MainScene" },
+		{ "name": "initial_scene", "value": "Level" },
 		{ "name": "screen_width", "value": 800 },
 		{ "name": "screen_height", "value": 600 },
 		{ "name": "use_60_fps", "value": true },

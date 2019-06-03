@@ -4,6 +4,11 @@ import Random;
 import Resources;
 import TwoCansAlpha4;
 
+const X_RES = 800;
+const Y_RES = 600;
+
+enum Direction { UP, DOWN, LEFT, RIGHT }
+
 const MIN_TILE_SIZE = 20;
 const MAX_COL_COUNT = X_RES / MIN_TILE_SIZE;
 const MAX_ROW_COUNT = Y_RES / MIN_TILE_SIZE;
@@ -14,7 +19,23 @@ const MAX_SUMMON_TIME = 99;
 const SUMMON_TIME_STEP = 10;
 
 // Represents a game level and its current state.
-class Level {
+class Level : AbstractScene {
+	static field levelNames =
+		[ "free-the-prisoner"
+		, "bridge-the-gap"
+		, "diodes"
+		, "four-holes"
+		, "small-ice-rink"
+		, "ice-hall"
+		, "hockey"
+		, "ice-rink"
+		, "ice-switches"
+		, "electric-ice"
+		, "victory"
+		];
+
+	field levelIdx;
+
 	field filename;
 	field moveList = [];
 	field moveIdx = 0;
@@ -46,6 +67,13 @@ class Level {
 	field summonTime = DFLT_SUMMON_TIME;
 	field summonMouseXY;
 	field summonKeyboardXY = null;
+
+	constructor(levelIdx = 0) {
+		this.levelIdx = levelIdx % Level.levelNames.length;
+
+		this.filename = "levels/" + Level.levelNames[this.levelIdx] + ".txt";
+		this.loadFromFile();
+	}
 
 	// Loads or reloads from file.
 	function loadFromFile() {
@@ -153,12 +181,6 @@ class Level {
 		this.resetSummonKeyboardXY();
 	}
 
-	// Loads the level from file.
-	constructor(filename) {
-		this.filename = filename;
-		this.loadFromFile();
-	}
-
 	// Gets the currently selected character or null if there are no characters left.
 	function getCurrentCharacter() {
 		if (this.characters.length == 0) return null;
@@ -256,9 +278,27 @@ class Level {
 			++this.moveIdx;
 		} else {
 			this.moveList[this.moveIdx] = move;
+			++this.moveIdx;
 			this.moveList = this.moveList[0:this.moveIdx];
 		}
 		move.apply(this);
+	}
+
+	function undo() {
+		this.loadFromFile();
+		if (this.moveIdx > 0) {
+			--this.moveIdx;
+			for (i = 0; i < this.moveIdx; ++i) {
+				this.moveList[i].apply(this);
+			}
+		}
+	}
+
+	function redo() {
+		if (this.moveIdx < this.moveList.length) {
+			this.moveList[this.moveIdx].apply(this);
+			++this.moveIdx;
+		}
 	}
 
 	// Updates the level.
@@ -272,7 +312,9 @@ class Level {
 		for (e : events) {
 			switch (e.type) {
 				case EventType.MOUSE_PRESS:
+					if (!this.consistent) continue;
 					if (this.summoning) {
+						// Summon.
 						this.doMove(new SummonCurrentCharacter(this.getSummonXY(), this.summonTime));
 					} else {
 						// Switch to clicked character, if any.
@@ -291,104 +333,92 @@ class Level {
 					break;
 				case EventType.KEY:
 					if (e.down) {
-						if (this.summoning) {
-							switch (e.key) {
-								case KeyboardKey.SPACE:
+						direction = null;
+						switch (e.key) {
+							case KeyboardKey.ESCAPE:
+								// Reset level, including undo buffer.
+								this.switchScene(new Level(this.levelIdx));
+								return;
+							case KeyboardKey.NUM_1:
+								// Previous level.
+								this.switchScene(new Level(this.levelIdx - 1));
+								return;
+							case KeyboardKey.NUM_2:
+								// Next level.
+								this.switchScene(new Level(this.levelIdx + 1));
+								return;
+							case KeyboardKey.R:
+								// Undo.
+								this.undo();
+								break;
+							case KeyboardKey.T:
+								// Redo.
+								this.redo();
+								break;
+							case KeyboardKey.SPACE:
+								if (!this.consistent) continue;
+								if (this.summoning) {
+									// Summon.
 									this.doMove(new SummonCurrentCharacter(this.getSummonXY(), this.summonTime));
-									break;
-								// Move summon target.
-								case KeyboardKey.UP:
-									this.moveSummonKeyboardXY(Direction.UP);
-									break;
-								case KeyboardKey.DOWN:
-									this.moveSummonKeyboardXY(Direction.DOWN);
-									break;
-								case KeyboardKey.LEFT:
-									this.moveSummonKeyboardXY(Direction.LEFT);
-									break;
-								case KeyboardKey.RIGHT:
-									this.moveSummonKeyboardXY(Direction.RIGHT);
-									break;
-								case KeyboardKey.W:
-									this.moveSummonKeyboardXY(Direction.UP);
-									break;
-								case KeyboardKey.S:
-									this.moveSummonKeyboardXY(Direction.DOWN);
-									break;
-								case KeyboardKey.A:
-									this.moveSummonKeyboardXY(Direction.LEFT);
-									break;
-								case KeyboardKey.D:
-									this.moveSummonKeyboardXY(Direction.RIGHT);
-									break;
-								default:
-									break;
-							}
-						} else {
-							switch (e.key) {
-								case KeyboardKey.R:
-									// Undo.
-									this.loadFromFile();
-									if (this.moveIdx > 0) {
-										--this.moveIdx;
-										for (i = 0; i < this.moveIdx; ++i) {
-											this.moveList[i].apply(this);
-										}
-									}
-									break;
-								case KeyboardKey.T:
-									// Redo.
-									if (this.moveIdx < this.moveList.length) {
-										this.moveList[this.moveIdx].apply(this);
-										++this.moveIdx;
-									}
-									break;
-								case KeyboardKey.SPACE:
+								} else {
 									// Try to wait until a character returns to the past.
 									if (this.returnPoints.length != 0) {
 										this.doMove(new FastForward());
 										if (!this.consistent) return;
 									}
-									break;
-								case KeyboardKey.Z:
-									// Wait one turn.
-									this.doMove(new Wait());
-									break;
-								case KeyboardKey.Q:
-									// Previous character.
-									this.doMove(new SwitchCharacter(this.characterIdx - 1));
-									break;
-								case KeyboardKey.E:
-									// Next character.
-									this.doMove(new SwitchCharacter(this.characterIdx + 1));
-									break;
+								}
+								break;
+							// Set direction.
+							case KeyboardKey.UP:
+								direction = Direction.UP;
+								break;
+							case KeyboardKey.DOWN:
+								direction = Direction.DOWN;
+								break;
+							case KeyboardKey.LEFT:
+								direction = Direction.LEFT;
+								break;
+							case KeyboardKey.RIGHT:
+								direction = Direction.RIGHT;
+								break;
+							case KeyboardKey.W:
+								direction = Direction.UP;
+								break;
+							case KeyboardKey.S:
+								direction = Direction.DOWN;
+								break;
+							case KeyboardKey.A:
+								direction = Direction.LEFT;
+								break;
+							case KeyboardKey.D:
+								direction = Direction.RIGHT;
+								break;
+							case KeyboardKey.Z:
+								// Wait one turn.
+								if (!this.consistent) continue;
+								this.doMove(new Wait());
+								break;
+							case KeyboardKey.Q:
+								// Select previous character.
+								if (!this.consistent) continue;
+								this.doMove(new SwitchCharacter(this.characterIdx - 1));
+								break;
+							case KeyboardKey.E:
+								// Select next character.
+								if (!this.consistent) continue;
+								this.doMove(new SwitchCharacter(this.characterIdx + 1));
+								break;
+							default:
+								break;
+						}
+						if (direction != null) {
+							if (!this.consistent) continue;
+							if (this.summoning) {
+								// Move summon target.
+								this.moveSummonKeyboardXY(direction);
+							} else {
 								// Move current character.
-								case KeyboardKey.UP:
-									this.doMove(new MoveCurrentCharacter(Direction.UP));
-									break;
-								case KeyboardKey.DOWN:
-									this.doMove(new MoveCurrentCharacter(Direction.DOWN));
-									break;
-								case KeyboardKey.LEFT:
-									this.doMove(new MoveCurrentCharacter(Direction.LEFT));
-									break;
-								case KeyboardKey.RIGHT:
-									this.doMove(new MoveCurrentCharacter(Direction.RIGHT));
-									break;
-								case KeyboardKey.W:
-									this.doMove(new MoveCurrentCharacter(Direction.UP));
-									break;
-								case KeyboardKey.S:
-									this.doMove(new MoveCurrentCharacter(Direction.DOWN));
-									break;
-								case KeyboardKey.A:
-									this.doMove(new MoveCurrentCharacter(Direction.LEFT));
-									break;
-								case KeyboardKey.D:
-									this.doMove(new MoveCurrentCharacter(Direction.RIGHT));
-									break;
-								default:
-									break;
+								this.doMove(new MoveCurrentCharacter(direction));
 							}
 						}
 					}
@@ -396,6 +426,12 @@ class Level {
 				default:
 					break;
 			}
+		}
+
+		// Check for victory.
+		if (this.consistent && this.characterCount == 0 && this.returnPoints.length == 0) {
+			this.switchScene(new Level(this.levelIdx + 1));
+			return;
 		}
 	}
 
@@ -428,7 +464,9 @@ class Level {
 	}
 
 	// Draws the level to the screen.
-	function draw() {
+	function render() {
+		Graphics2D.Draw.fill(0, 0, 0);
+
 		for (row = 0; row < this.rowCount; ++row) {
 			for (col = 0; col < this.colCount; ++col) {
 				// Draw tiles.
